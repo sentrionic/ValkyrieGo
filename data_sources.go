@@ -47,13 +47,13 @@ func initDS() (*dataSources, error) {
 	})
 
 	// verify redis connection
-
 	_, err = rdb.Ping(context.Background()).Result()
 
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to redis: %w", err)
 	}
 
+	// Initialize S3 Session
 	accessKey := os.Getenv("AWS_ACCESS_KEY")
 	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 	region := os.Getenv("AWS_S3_REGION")

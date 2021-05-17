@@ -22,6 +22,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	 * repository layer
 	 */
 	userRepository := repository.NewUserRepository(d.DB)
+	friendRepository := repository.NewFriendRepository(d.DB)
 
 	bucketName := os.Getenv("AWS_STORAGE_BUCKET_NAME")
 	imageRepository := repository.NewImageRepository(d.S3Session, bucketName)
@@ -33,13 +34,18 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	mailRepository := repository.NewMailRepository(gmailUser, gmailPassword, origin)
 
 	/*
-	 * repository layer
+	 * service layer
 	 */
 	userService := service.NewUserService(&service.USConfig{
 		UserRepository:  userRepository,
 		ImageRepository: imageRepository,
 		RedisRepository: redisRepository,
 		MailRepository:  mailRepository,
+	})
+
+	friendService := service.NewFriendService(&service.FSConfig{
+		UserRepository:   userRepository,
+		FriendRepository: friendRepository,
 	})
 
 	// initialize gin.Engine
@@ -75,6 +81,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	handler.NewHandler(&handler.Config{
 		R:               router,
 		UserService:     userService,
+		FriendService:   friendService,
 		TimeoutDuration: time.Duration(ht) * time.Second,
 		MaxBodyBytes:    mbb,
 	})

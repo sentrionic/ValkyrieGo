@@ -2,12 +2,12 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/sentrionic/valkyrie/model"
 )
 
-func AuthUser(s model.UserService) gin.HandlerFunc {
+func AuthUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		id := session.Get("userId")
@@ -23,17 +23,12 @@ func AuthUser(s model.UserService) gin.HandlerFunc {
 
 		userId := id.(string)
 
-		user, err := s.Get(userId)
+		c.Set("userId", userId)
+		session.Set("userId", id)
 
-		if err != nil {
-			c.JSON(401, gin.H{
-				"error": err,
-			})
-			c.Abort()
-			return
+		if err := session.Save(); err != nil {
+			fmt.Println(err)
 		}
-
-		c.Set("user", user)
 
 		c.Next()
 	}

@@ -21,6 +21,15 @@ type UserService interface {
 	ResetPassword(ctx context.Context, password string, token string) (*User, error)
 }
 
+type FriendService interface {
+	GetFriends(id string) (*[]Friend, error)
+	GetRequests(id string) (*[]FriendRequest, error)
+	GetMemberById(id string) (*User, error)
+	DeleteRequest(memberId string, userId string) error
+	RemoveFriend(memberId string, userId string) error
+	SaveRequests(user *User) error
+}
+
 // UserRepository defines methods the service layer expects
 // any repository it interacts with to implement
 type UserRepository interface {
@@ -28,6 +37,15 @@ type UserRepository interface {
 	Create(u *User) error
 	FindByEmail(email string) (*User, error)
 	Update(u *User) error
+}
+
+type FriendRepository interface {
+	FindByID(id string) (*User, error)
+	FriendsList(id string) (*[]Friend, error)
+	RequestList(id string) (*[]FriendRequest, error)
+	DeleteRequest(memberId string, userId string) error
+	RemoveFriend(memberId string, userId string) error
+	Save(user *User) error
 }
 
 type ImageRepository interface {

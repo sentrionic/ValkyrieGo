@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"fmt"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/handler/middleware"
 	"github.com/sentrionic/valkyrie/model"
@@ -12,8 +10,9 @@ import (
 
 // Handler struct holds required services for handler to function
 type Handler struct {
-	userService  model.UserService
-	MaxBodyBytes int64
+	userService   model.UserService
+	friendService model.FriendService
+	MaxBodyBytes  int64
 }
 
 // Config will hold services that will eventually be injected into this
@@ -21,6 +20,7 @@ type Handler struct {
 type Config struct {
 	R               *gin.Engine
 	UserService     model.UserService
+	FriendService   model.FriendService
 	TimeoutDuration time.Duration
 	MaxBodyBytes    int64
 }
@@ -30,35 +30,31 @@ type Config struct {
 func NewHandler(c *Config) {
 	// Create a handler (which will later have injected services)
 	h := &Handler{
-		userService:  c.UserService,
-		MaxBodyBytes: c.MaxBodyBytes,
+		userService:   c.UserService,
+		friendService: c.FriendService,
+		MaxBodyBytes:  c.MaxBodyBytes,
 	}
 
 	// Create an account group
 	g := c.R.Group("api/account")
-
-	if gin.Mode() != gin.TestMode {
-		g.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
-		g.GET("/", middleware.AuthUser(h.userService), h.Me)
-		g.PUT("/", middleware.AuthUser(h.userService), h.Edit)
-		g.PUT("/change-password", middleware.AuthUser(h.userService), h.ChangePassword)
-	} else {
-		g.GET("/", h.Me)
-	}
+	g.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
 
 	g.POST("/register", h.Register)
 	g.POST("/login", h.Login)
 	g.POST("/logout", h.Logout)
 	g.POST("/forgot-password", h.ForgotPassword)
 	g.POST("/reset-password", h.ResetPassword)
-}
 
-func setUserSession(c *gin.Context, id string) {
-	if gin.Mode() != gin.TestMode {
-		session := sessions.Default(c)
-		session.Set("userId", id)
-		if err := session.Save(); err != nil {
-			fmt.Println(err)
-		}
-	}
+	g.Use(middleware.AuthUser())
+
+	g.GET("/", h.Me)
+	g.PUT("/", h.Edit)
+	g.PUT("/change-password", h.ChangePassword)
+
+	g.GET("/me/friends", h.GetUserFriends)
+	g.GET("/me/pending", h.GetUserRequests)
+	g.POST("/:memberId/friend", h.SendFriendRequest)
+	g.DELETE("/:memberId/friend", h.RemoveFriend)
+	g.POST("/:memberId/friend/accept", h.AcceptFriendRequest)
+	g.POST("/:memberId/friend/cancel", h.CancelFriendRequest)
 }
