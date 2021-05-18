@@ -12,6 +12,7 @@ import (
 type Handler struct {
 	userService   model.UserService
 	friendService model.FriendService
+	guildService  model.GuildService
 	MaxBodyBytes  int64
 }
 
@@ -21,6 +22,7 @@ type Config struct {
 	R               *gin.Engine
 	UserService     model.UserService
 	FriendService   model.FriendService
+	GuildService    model.GuildService
 	TimeoutDuration time.Duration
 	MaxBodyBytes    int64
 }
@@ -32,29 +34,50 @@ func NewHandler(c *Config) {
 	h := &Handler{
 		userService:   c.UserService,
 		friendService: c.FriendService,
+		guildService:  c.GuildService,
 		MaxBodyBytes:  c.MaxBodyBytes,
 	}
 
 	// Create an account group
-	g := c.R.Group("api/account")
-	g.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
+	ag := c.R.Group("api/account")
+	ag.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
 
-	g.POST("/register", h.Register)
-	g.POST("/login", h.Login)
-	g.POST("/logout", h.Logout)
-	g.POST("/forgot-password", h.ForgotPassword)
-	g.POST("/reset-password", h.ResetPassword)
+	ag.POST("/register", h.Register)
+	ag.POST("/login", h.Login)
+	ag.POST("/logout", h.Logout)
+	ag.POST("/forgot-password", h.ForgotPassword)
+	ag.POST("/reset-password", h.ResetPassword)
 
-	g.Use(middleware.AuthUser())
+	ag.Use(middleware.AuthUser())
 
-	g.GET("/", h.Me)
-	g.PUT("/", h.Edit)
-	g.PUT("/change-password", h.ChangePassword)
+	ag.GET("/", h.Me)
+	ag.PUT("/", h.Edit)
+	ag.PUT("/change-password", h.ChangePassword)
 
-	g.GET("/me/friends", h.GetUserFriends)
-	g.GET("/me/pending", h.GetUserRequests)
-	g.POST("/:memberId/friend", h.SendFriendRequest)
-	g.DELETE("/:memberId/friend", h.RemoveFriend)
-	g.POST("/:memberId/friend/accept", h.AcceptFriendRequest)
-	g.POST("/:memberId/friend/cancel", h.CancelFriendRequest)
+	ag.GET("/me/friends", h.GetUserFriends)
+	ag.GET("/me/pending", h.GetUserRequests)
+	ag.POST("/:memberId/friend", h.SendFriendRequest)
+	ag.DELETE("/:memberId/friend", h.RemoveFriend)
+	ag.POST("/:memberId/friend/accept", h.AcceptFriendRequest)
+	ag.POST("/:memberId/friend/cancel", h.CancelFriendRequest)
+
+	gg := c.R.Group("api/guilds")
+	gg.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
+	gg.Use(middleware.AuthUser())
+
+	gg.GET("/:guildId/members", h.GetGuildMembers)
+	gg.GET("/", h.GetUserGuilds)
+	gg.POST("/create", h.CreateGuild)
+	gg.GET("/:guildId/invite", h.GetInvite)
+	gg.DELETE("/:guildId/invite", h.DeleteGuildInvites)
+	gg.POST("/join", h.JoinGuild)
+	gg.GET("/:guildId/member", h.GetMemberSettings)
+	gg.PUT("/:guildId/member", h.EditMemberSettings)
+	gg.DELETE("/:guildId", h.LeaveGuild)
+	gg.PUT("/:guildId", h.EditGuild)
+	gg.DELETE("/:guildId/delete", h.DeleteGuild)
+	gg.GET("/:guildId/bans", h.GetBanList)
+	gg.POST("/:guildId/bans", h.BanMember)
+	gg.DELETE("/:guildId/bans", h.UnbanMember)
+	gg.POST("/:guildId/kick", h.KickMember)
 }

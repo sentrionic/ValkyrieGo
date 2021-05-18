@@ -59,8 +59,7 @@ func (r *friendRepository) FindByID(id string) (*model.User, error) {
 		Preload("Friends").
 		Preload("Requests").
 		Where("id = ?", id).
-		First(&user).Error;
-		err != nil {
+		First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return user, apperrors.NewNotFound("uid", id)
 		}

@@ -1,0 +1,112 @@
+package service
+
+import (
+	"context"
+	gonanoid "github.com/matoous/go-nanoid"
+	"github.com/sentrionic/valkyrie/model"
+	"strings"
+)
+
+// UserService acts as a struct for injecting an implementation of GuildRepository
+// for use in service methods
+type guildService struct {
+	UserRepository    model.UserRepository
+	ImageRepository   model.ImageRepository
+	RedisRepository   model.RedisRepository
+	GuildRepository   model.GuildRepository
+	ChannelRepository model.ChannelRepository
+}
+
+// GSConfig will hold repositories that will eventually be injected into this
+// this service layer
+type GSConfig struct {
+	UserRepository    model.UserRepository
+	ImageRepository   model.ImageRepository
+	RedisRepository   model.RedisRepository
+	GuildRepository   model.GuildRepository
+	ChannelRepository model.ChannelRepository
+}
+
+// NewGuildService is a factory function for
+// initializing a UserService with its repository layer dependencies
+func NewGuildService(c *GSConfig) model.GuildService {
+	return &guildService{
+		UserRepository:    c.UserRepository,
+		ImageRepository:   c.ImageRepository,
+		RedisRepository:   c.RedisRepository,
+		GuildRepository:   c.GuildRepository,
+		ChannelRepository: c.ChannelRepository,
+	}
+}
+
+func (g *guildService) GetUserGuilds(uid string) (*[]model.GuildResponse, error) {
+	return g.GuildRepository.List(uid)
+}
+
+func (g *guildService) GetGuildMembers(userId string, guildId string) (*[]model.MemberResponse, error) {
+	return g.GuildRepository.GuildMembers(userId, guildId)
+}
+
+func (g *guildService) CreateGuild(guild *model.Guild) error {
+	id, err := GenerateId()
+
+	if err != nil {
+		return err
+	}
+
+	guild.ID = id
+	guild.Name = strings.TrimSpace(guild.Name)
+	guild.Icon = nil
+
+	return g.GuildRepository.Create(guild)
+}
+
+func (g *guildService) CreateDefaultChannel(channel *model.Channel) error {
+	id, err := GenerateId()
+
+	if err != nil {
+		return err
+	}
+
+	channel.ID = id
+
+	return g.ChannelRepository.Create(channel)
+}
+
+func (g *guildService) GetUser(uid string) (*model.User, error) {
+	return g.GuildRepository.FindUserByID(uid)
+}
+
+func (g *guildService) GetGuild(id string) (*model.Guild, error) {
+	return g.GuildRepository.FindByID(id)
+}
+
+func (g *guildService) GenerateInviteLink(ctx context.Context, guildId string, isPermanent bool) (string, error) {
+	id, err := gonanoid.Nanoid(8)
+
+	if err != nil {
+		return "", err
+	}
+
+	if err := g.RedisRepository.SaveInvite(ctx, guildId, id, isPermanent); err != nil {
+		return "", err
+	}
+
+	return id, nil
+}
+
+func (g *guildService) UpdateGuild(guild *model.Guild) error {
+	return g.GuildRepository.Save(guild)
+}
+
+func (g *guildService) GetGuildIdFromInvite(ctx context.Context, token string) (string, error) {
+	return g.RedisRepository.GetInvite(ctx, token)
+}
+
+func (g *guildService) GetDefaultChannel(guildId string) (*model.Channel, error) {
+	return g.ChannelRepository.GetGuildDefault(guildId)
+}
+
+func (g *guildService) InvalidateInvites(ctx context.Context, guild *model.Guild) {
+	g.RedisRepository.InvalidateInvites(ctx, guild)
+}

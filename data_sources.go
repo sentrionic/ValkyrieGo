@@ -32,8 +32,12 @@ func initDS() (*dataSources, error) {
 		return nil, fmt.Errorf("error opening db: %w", err)
 	}
 
-	if err := db.AutoMigrate(&model.User{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Guild{}, &model.Member{}, &model.Channel{}); err != nil {
 		return nil, fmt.Errorf("error migrating models: %w", err)
+	}
+
+	if err := db.SetupJoinTable(&model.Guild{}, "Members", &model.Member{}); err != nil {
+		return nil, fmt.Errorf("error creating join table: %w", err)
 	}
 
 	// Initialize redis connection

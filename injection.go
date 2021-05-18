@@ -23,6 +23,8 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	 */
 	userRepository := repository.NewUserRepository(d.DB)
 	friendRepository := repository.NewFriendRepository(d.DB)
+	guildRepository := repository.NewGuildRepository(d.DB)
+	channelRepository := repository.NewChannelRepository(d.DB)
 
 	bucketName := os.Getenv("AWS_STORAGE_BUCKET_NAME")
 	imageRepository := repository.NewImageRepository(d.S3Session, bucketName)
@@ -46,6 +48,14 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	friendService := service.NewFriendService(&service.FSConfig{
 		UserRepository:   userRepository,
 		FriendRepository: friendRepository,
+	})
+
+	guildService := service.NewGuildService(&service.GSConfig{
+		UserRepository:    userRepository,
+		ImageRepository:   imageRepository,
+		RedisRepository:   redisRepository,
+		GuildRepository:   guildRepository,
+		ChannelRepository: channelRepository,
 	})
 
 	// initialize gin.Engine
@@ -82,6 +92,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 		R:               router,
 		UserService:     userService,
 		FriendService:   friendService,
+		GuildService:    guildService,
 		TimeoutDuration: time.Duration(ht) * time.Second,
 		MaxBodyBytes:    mbb,
 	})

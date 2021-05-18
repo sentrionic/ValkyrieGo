@@ -30,6 +30,20 @@ type FriendService interface {
 	SaveRequests(user *User) error
 }
 
+type GuildService interface {
+	GetUser(uid string) (*User, error)
+	GetGuild(id string) (*Guild, error)
+	GetUserGuilds(uid string) (*[]GuildResponse, error)
+	GetGuildMembers(userId string, guildId string) (*[]MemberResponse, error)
+	CreateGuild(g *Guild) error
+	CreateDefaultChannel(c *Channel) error
+	GenerateInviteLink(ctx context.Context, guildId string, isPermanent bool) (string, error)
+	UpdateGuild(g *Guild) error
+	GetGuildIdFromInvite(ctx context.Context, token string) (string, error)
+	GetDefaultChannel(guildId string) (*Channel, error)
+	InvalidateInvites(ctx context.Context, guild *Guild)
+}
+
 // UserRepository defines methods the service layer expects
 // any repository it interacts with to implement
 type UserRepository interface {
@@ -48,6 +62,20 @@ type FriendRepository interface {
 	Save(user *User) error
 }
 
+type GuildRepository interface {
+	FindUserByID(uid string) (*User, error)
+	FindByID(id string) (*Guild, error)
+	List(uid string) (*[]GuildResponse, error)
+	GuildMembers(userId string, guildId string) (*[]MemberResponse, error)
+	Create(g *Guild) error
+	Save(g *Guild) error
+}
+
+type ChannelRepository interface {
+	Create(c *Channel) error
+	GetGuildDefault(guildId string) (*Channel, error)
+}
+
 type ImageRepository interface {
 	UploadAvatar(header *multipart.FileHeader, directory string) (string, error)
 	UploadImage(header *multipart.FileHeader, directory string) (string, error)
@@ -61,4 +89,7 @@ type MailRepository interface {
 type RedisRepository interface {
 	SetResetToken(ctx context.Context, id string) (string, error)
 	GetIdFromToken(ctx context.Context, token string) (string, error)
+	SaveInvite(ctx context.Context, guildId string, id string, isPermanent bool) error
+	GetInvite(ctx context.Context, token string) (string, error)
+	InvalidateInvites(ctx context.Context, guild *Guild)
 }
