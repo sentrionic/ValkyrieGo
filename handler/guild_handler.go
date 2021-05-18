@@ -241,6 +241,7 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 		return
 	}
 
+	// If the link contains the domain, remove it
 	if strings.Contains(req.Link, "/") {
 		req.Link = req.Link[strings.LastIndex(req.Link, "/")+1:]
 	}
@@ -287,6 +288,8 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 		return
 	}
 
+	// TODO: Send add_member event
+
 	channel, _ := h.guildService.GetDefaultChannel(guildId)
 
 	c.JSON(http.StatusCreated, guild.SerializeGuild(channel.ID))
@@ -294,7 +297,38 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 }
 
 func (h *Handler) LeaveGuild(c *gin.Context) {
-	c.JSON(http.StatusOK, "LeaveGuild")
+	userId := c.MustGet("userId").(string)
+	guildId := c.Param("guildId")
+
+	guild, err := h.guildService.GetGuild(guildId)
+
+	if err != nil {
+		e := apperrors.NewNotFound("guild", guildId)
+
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
+		return
+	}
+
+	if guild.OwnerId == userId {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "the owner cannot leave their server",
+		})
+		return
+	}
+
+	if err := h.guildService.RemoveMember(userId, guildId); err != nil {
+		log.Printf("Failed to leave guild: %v\n", err.Error())
+		c.JSON(apperrors.Status(err), gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	// TODO: Send remove_member event
+
+	c.JSON(http.StatusOK, true)
 }
 
 func (h *Handler) EditGuild(c *gin.Context) {
@@ -302,31 +336,38 @@ func (h *Handler) EditGuild(c *gin.Context) {
 }
 
 func (h *Handler) DeleteGuild(c *gin.Context) {
-	c.JSON(http.StatusOK, "DeleteGuild")
-}
+	userId := c.MustGet("userId").(string)
+	guildId := c.Param("guildId")
 
-func (h *Handler) GetMemberSettings(c *gin.Context) {
-	c.JSON(http.StatusOK, "GetMemberSettings")
-}
+	guild, err := h.guildService.GetGuild(guildId)
 
-func (h *Handler) EditMemberSettings(c *gin.Context) {
-	c.JSON(http.StatusOK, "EditMemberSettings")
-}
+	if err != nil {
+		e := apperrors.NewNotFound("guild", guildId)
 
-func (h *Handler) GetBanList(c *gin.Context) {
-	c.JSON(http.StatusOK, "GetBanList")
-}
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
+		return
+	}
 
-func (h *Handler) BanMember(c *gin.Context) {
-	c.JSON(http.StatusOK, "BanMember")
-}
+	if guild.OwnerId != userId {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "only the owner can delete their server",
+		})
+		return
+	}
 
-func (h *Handler) UnbanMember(c *gin.Context) {
-	c.JSON(http.StatusOK, "UnbanMember")
-}
+	if err := h.guildService.DeleteGuild(guildId); err != nil {
+		log.Printf("Failed to leave guild: %v\n", err.Error())
+		c.JSON(apperrors.Status(err), gin.H{
+			"error": err,
+		})
+		return
+	}
 
-func (h *Handler) KickMember(c *gin.Context) {
-	c.JSON(http.StatusOK, "KickMember")
+	// TODO: Send delete_guild event
+
+	c.JSON(http.StatusOK, true)
 }
 
 // isMember checks if the given user is a member

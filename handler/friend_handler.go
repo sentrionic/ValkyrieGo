@@ -93,6 +93,8 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 			})
 			return
 		}
+
+		//TODO: Send add_request event
 	}
 
 	c.JSON(http.StatusOK, true)
@@ -145,6 +147,8 @@ func (h *Handler) RemoveFriend(c *gin.Context) {
 			})
 			return
 		}
+
+		//TODO: Send remove_friend event
 	}
 
 	c.JSON(http.StatusOK, true)
@@ -212,6 +216,8 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 			})
 			return
 		}
+
+		//TODO: Send add_friend event
 	}
 
 	c.JSON(http.StatusOK, true)

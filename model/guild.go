@@ -26,6 +26,8 @@ type GuildResponse struct {
 	DefaultChannelId string    `json:"default_channel_id"`
 }
 
+// SerializeGuild returns the guild API response.
+// The channelId represents the default channel the user gets send to.
 func (g Guild) SerializeGuild(channelId string) GuildResponse {
 	return GuildResponse{
 		Id:               g.ID,

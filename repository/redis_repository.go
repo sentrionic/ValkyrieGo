@@ -23,6 +23,11 @@ func NewRedisRepository(rds *redis.Client) model.RedisRepository {
 	}
 }
 
+var (
+	InviteLinkPrefix     = "inviteLink"
+	ForgotPasswordPrefix = "forgot-password"
+)
+
 func (r *redisRepository) SetResetToken(ctx context.Context, id string) (string, error) {
 	uid, err := gonanoid.New()
 
@@ -30,7 +35,7 @@ func (r *redisRepository) SetResetToken(ctx context.Context, id string) (string,
 		return "", err
 	}
 
-	if err := r.rds.Set(ctx, fmt.Sprintf("forgot-password:%s", uid), id, 24*time.Hour).Err(); err != nil {
+	if err := r.rds.Set(ctx, fmt.Sprintf("%s:%s", ForgotPasswordPrefix, uid), id, 24*time.Hour).Err(); err != nil {
 		fmt.Println(err)
 		return "", err
 	}
@@ -39,7 +44,7 @@ func (r *redisRepository) SetResetToken(ctx context.Context, id string) (string,
 }
 
 func (r *redisRepository) GetIdFromToken(ctx context.Context, token string) (string, error) {
-	key := fmt.Sprintf("forgot-password:%s", token)
+	key := fmt.Sprintf("%s:%s", ForgotPasswordPrefix, token)
 	val, err := r.rds.Get(ctx, key).Result()
 
 	if err != nil {
@@ -67,12 +72,12 @@ func (r *redisRepository) SaveInvite(ctx context.Context, guildId string, id str
 		expiration = 0
 	}
 
-	result := r.rds.Set(ctx, fmt.Sprintf("inviteLink:%s", id), value, expiration)
+	result := r.rds.Set(ctx, fmt.Sprintf("%s:%s", InviteLinkPrefix, id), value, expiration)
 	return result.Err()
 }
 
 func (r *redisRepository) GetInvite(ctx context.Context, token string) (string, error) {
-	key := fmt.Sprintf("inviteLink:%s", token)
+	key := fmt.Sprintf("%s:%s", InviteLinkPrefix, token)
 	val, err := r.rds.Get(ctx, key).Result()
 
 	if err != nil {
@@ -97,7 +102,7 @@ func (r *redisRepository) GetInvite(ctx context.Context, token string) (string, 
 
 func (r *redisRepository) InvalidateInvites(ctx context.Context, guild *model.Guild) {
 	for _, v := range guild.InviteLinks {
-		key := fmt.Sprintf("inviteLink:%s", v)
+		key := fmt.Sprintf("%s:%s", InviteLinkPrefix, v)
 		r.rds.Del(ctx, key)
 	}
 }

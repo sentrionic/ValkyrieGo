@@ -42,6 +42,8 @@ type GuildService interface {
 	GetGuildIdFromInvite(ctx context.Context, token string) (string, error)
 	GetDefaultChannel(guildId string) (*Channel, error)
 	InvalidateInvites(ctx context.Context, guild *Guild)
+	RemoveMember(userId string, guildId string) error
+	DeleteGuild(guildId string) error
 }
 
 // UserRepository defines methods the service layer expects
@@ -69,6 +71,8 @@ type GuildRepository interface {
 	GuildMembers(userId string, guildId string) (*[]MemberResponse, error)
 	Create(g *Guild) error
 	Save(g *Guild) error
+	RemoveMember(userId string, guildId string) error
+	Delete(guildId string) error
 }
 
 type ChannelRepository interface {

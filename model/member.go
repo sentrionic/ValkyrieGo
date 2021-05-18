@@ -5,7 +5,7 @@ import "time"
 type Member struct {
 	BaseModel
 	UserID   string    `gorm:"primaryKey"`
-	GuildID  string    `gorm:"primaryKey"`
+	GuildID  string    `gorm:"primaryKey;"`
 	Nickname *string   `gorm:"nickname"`
 	Color    *string   `gorm:"color"`
 	LastSeen time.Time `gorm:"autoCreateTime"`

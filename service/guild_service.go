@@ -110,3 +110,11 @@ func (g *guildService) GetDefaultChannel(guildId string) (*model.Channel, error)
 func (g *guildService) InvalidateInvites(ctx context.Context, guild *model.Guild) {
 	g.RedisRepository.InvalidateInvites(ctx, guild)
 }
+
+func (g *guildService) RemoveMember(userId string, guildId string) error {
+	return g.GuildRepository.RemoveMember(userId, guildId)
+}
+
+func (g *guildService) DeleteGuild(guildId string) error {
+	return g.GuildRepository.Delete(guildId)
+}

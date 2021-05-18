@@ -80,7 +80,7 @@ func (r *guildRepository) GuildMembers(userId string, guildId string) (*[]model.
 }
 
 func (r *guildRepository) Create(g *model.Guild) error {
-	return r.DB.Debug().Create(&g).Error
+	return r.DB.Create(&g).Error
 }
 
 func (r *guildRepository) FindUserByID(uid string) (*model.User, error) {
@@ -118,4 +118,18 @@ func (r *guildRepository) FindByID(id string) (*model.Guild, error) {
 
 func (r *guildRepository) Save(g *model.Guild) error {
 	return r.DB.Save(&g).Error
+}
+
+func (r *guildRepository) RemoveMember(userId string, guildId string) error {
+	err := r.DB.
+		Exec("DELETE FROM members WHERE user_id = ? AND guild_id = ?", userId, guildId).
+		Error
+	return err
+}
+
+func (r *guildRepository) Delete(guildId string) error {
+	err := r.DB.
+		Exec("DELETE FROM members WHERE guild_id = ?", guildId).
+		Exec("DELETE FROM guilds WHERE id = ?", guildId).Error
+	return err
 }

@@ -17,7 +17,7 @@ import (
 type registerReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Username string `json:"username" binding:"required,gte=3,lte=30"`
-	Password string `json:"password" binding:"required,gte=6,lte=30"`
+	Password string `json:"password" binding:"required,gte=6,lte=150"`
 }
 
 // Register handler
@@ -29,13 +29,13 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	u := &model.User{
+	user := &model.User{
 		Email:    req.Email,
 		Username: req.Username,
 		Password: req.Password,
 	}
 
-	err := h.userService.Register(u)
+	err := h.userService.Register(user)
 
 	if err != nil {
 		log.Printf("Failed to sign up user: %v\n", err.Error())
@@ -45,9 +45,9 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	setUserSession(c, u.ID)
+	setUserSession(c, user.ID)
 
-	c.JSON(http.StatusCreated, u)
+	c.JSON(http.StatusCreated, user)
 }
 
 // Login
@@ -66,12 +66,12 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	u := &model.User{
+	user := &model.User{
 		Email:    req.Email,
 		Password: req.Password,
 	}
 
-	err := h.userService.Login(u)
+	err := h.userService.Login(user)
 
 	if err != nil {
 		log.Printf("Failed to sign in user: %v\n", err.Error())
@@ -81,9 +81,9 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	setUserSession(c, u.ID)
+	setUserSession(c, user.ID)
 
-	c.JSON(http.StatusOK, u)
+	c.JSON(http.StatusOK, user)
 }
 
 // LOGOUT
