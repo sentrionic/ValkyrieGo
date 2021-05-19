@@ -118,3 +118,19 @@ func (g *guildService) RemoveMember(userId string, guildId string) error {
 func (g *guildService) DeleteGuild(guildId string) error {
 	return g.GuildRepository.Delete(guildId)
 }
+
+func (g *guildService) UnbanMember(userId string, guildId string) error {
+	return g.GuildRepository.UnbanMember(userId, guildId)
+}
+
+func (g *guildService) GetBanList(guildId string) (*[]model.BanResponse, error) {
+	return g.GuildRepository.GetBanList(guildId)
+}
+
+func (g *guildService) GetMemberSettings(userId string, guildId string) (*model.MemberSettings, error) {
+	return g.GuildRepository.GetMemberSettings(userId, guildId)
+}
+
+func (g *guildService) UpdateMemberSettings(settings *model.MemberSettings, userId string, guildId string) error {
+	return g.GuildRepository.UpdateMemberSettings(settings, userId, guildId)
+}

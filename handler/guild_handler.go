@@ -8,6 +8,7 @@ import (
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strconv"
@@ -51,12 +52,12 @@ func (h *Handler) GetGuildMembers(c *gin.Context) {
 	c.JSON(http.StatusOK, members)
 }
 
-type createRequest struct {
-	Name string `json:"name" binding:"required,gte=3"`
+type createGuildRequest struct {
+	Name string `json:"name" binding:"required,gte=3,lte=30"`
 }
 
 func (h *Handler) CreateGuild(c *gin.Context) {
-	var req createRequest
+	var req createGuildRequest
 
 	// Bind incoming json to struct and check for validation errors
 	if ok := bindData(c, &req); !ok {
@@ -114,6 +115,93 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, guild.SerializeGuild(channel.ID))
+	return
+}
+
+type editGuildRequest struct {
+	Name  string                `form:"name" binding:"required,gte=3,lte=30"`
+	Image *multipart.FileHeader `form:"image" binding:"omitempty"`
+	Icon  *string               `form:"icon" binding:"omitempty"`
+}
+
+func (h *Handler) EditGuild(c *gin.Context) {
+	var req editGuildRequest
+
+	// Bind incoming json to struct and check for validation errors
+	if ok := bindData(c, &req); !ok {
+		return
+	}
+
+	userId := c.MustGet("userId").(string)
+
+	guildId := c.Param("guildId")
+
+	guild, err := h.guildService.GetGuild(guildId)
+
+	if err != nil {
+		e := apperrors.NewNotFound("guild", guildId)
+
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
+		return
+	}
+
+	if guild.OwnerId != userId {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "must be the owner for that",
+		})
+		return
+	}
+
+	guild.Name = req.Name
+
+	//TODO: Change frontend/app to use icon instead of image for existing icons
+	if req.Image != nil {
+		// Validate image mime-type is allowable
+		mimeType := req.Image.Header.Get("Content-Type")
+
+		if valid := isAllowedImageType(mimeType); !valid {
+			log.Println("Image is not an allowable mime-type")
+			e := apperrors.NewBadRequest("imageFile must be 'image/jpeg' or 'image/png'")
+			c.JSON(e.Status(), gin.H{
+				"error": e,
+			})
+			return
+		}
+
+		directory := fmt.Sprintf("valkyrie_go/guilds/%s", guild.ID)
+		url, err := h.userService.ChangeAvatar(req.Image, directory)
+
+		if err != nil {
+			fmt.Println(err)
+			c.JSON(500, gin.H{
+				"error": err,
+			})
+			return
+		}
+
+		if guild.Icon != nil {
+			_ = h.userService.DeleteImage(*guild.Icon)
+		}
+		guild.Icon = &url
+	} else if req.Icon != nil {
+		guild.Icon = req.Icon
+	} else {
+		guild.Icon = nil
+	}
+
+	if err := h.guildService.UpdateGuild(guild); err != nil {
+		log.Printf("Failed to update guild: %v\n", err.Error())
+		c.JSON(apperrors.Status(err), gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	//TODO: Send edit_guild event
+
+	c.JSON(http.StatusCreated, true)
 	return
 }
 
@@ -269,6 +357,15 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 		return
 	}
 
+	if isBanned(guild, authUser.ID) {
+		e := apperrors.NewBadRequest("you are banned from this server")
+
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
+		return
+	}
+
 	if isMember(guild, authUser.ID) {
 		e := apperrors.NewBadRequest("already a member")
 
@@ -331,10 +428,6 @@ func (h *Handler) LeaveGuild(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-func (h *Handler) EditGuild(c *gin.Context) {
-	c.JSON(http.StatusOK, "EditGuild")
-}
-
 func (h *Handler) DeleteGuild(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	guildId := c.Param("guildId")
@@ -373,6 +466,16 @@ func (h *Handler) DeleteGuild(c *gin.Context) {
 // isMember checks if the given user is a member
 func isMember(guild *model.Guild, userId string) bool {
 	for _, v := range guild.Members {
+		if v.ID == userId {
+			return true
+		}
+	}
+	return false
+}
+
+// isBanned checks if the given user is banned
+func isBanned(guild *model.Guild, userId string) bool {
+	for _, v := range guild.Bans {
 		if v.ID == userId {
 			return true
 		}

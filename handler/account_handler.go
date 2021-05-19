@@ -84,7 +84,6 @@ func (h *Handler) Edit(c *gin.Context) {
 		mimeType := req.Image.Header.Get("Content-Type")
 
 		if valid := isAllowedImageType(mimeType); !valid {
-			log.Println("Image is not an allowable mime-type")
 			e := apperrors.NewBadRequest("imageFile must be 'image/jpeg' or 'image/png'")
 			c.JSON(e.Status(), gin.H{
 				"error": e,

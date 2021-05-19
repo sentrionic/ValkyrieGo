@@ -6,6 +6,7 @@ import (
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"time"
 )
 
 // guildRepository is data/repository implementation
@@ -130,6 +131,51 @@ func (r *guildRepository) RemoveMember(userId string, guildId string) error {
 func (r *guildRepository) Delete(guildId string) error {
 	err := r.DB.
 		Exec("DELETE FROM members WHERE guild_id = ?", guildId).
+		Exec("DELETE FROM bans WHERE guild_id = ?", guildId).
 		Exec("DELETE FROM guilds WHERE id = ?", guildId).Error
+	return err
+}
+
+func (r *guildRepository) UnbanMember(userId string, guildId string) error {
+	err := r.DB.
+		Exec("DELETE FROM bans WHERE guild_id = ? AND user_id = ?", guildId, userId).
+		Error
+	return err
+}
+
+func (r *guildRepository) GetBanList(guildId string) (*[]model.BanResponse, error) {
+	var bans []model.BanResponse
+	err := r.DB.
+		Raw(`
+			select u.id, u.username, u.image
+			from bans b
+			join users u on b."user_id" = u.id
+			where b."guild_id" = ?
+		`, guildId).
+		Scan(&bans).
+		Error
+
+	return &bans, err
+}
+
+func (r *guildRepository) GetMemberSettings(userId string, guildId string) (*model.MemberSettings, error) {
+	settings := model.MemberSettings{}
+	err := r.DB.
+		Table("members").
+		Where("user_id = ? AND guild_id = ?", userId, guildId).
+		First(&settings)
+	return &settings, err.Error
+}
+
+func (r *guildRepository) UpdateMemberSettings(settings *model.MemberSettings, userId string, guildId string) error {
+	err := r.DB.
+		Table("members").
+		Where("user_id = ? AND guild_id = ?", userId, guildId).
+		Updates(map[string]interface{}{
+			"color":      settings.Color,
+			"nickname":   settings.Nickname,
+			"updated_at": time.Now(),
+		}).
+		Error
 	return err
 }

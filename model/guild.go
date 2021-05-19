@@ -13,6 +13,7 @@ type Guild struct {
 	InviteLinks pq.StringArray `gorm:"type:text[]"`
 	Members     []User         `gorm:"many2many:members;constraint:OnDelete:CASCADE;"`
 	Channels    []Channel      `gorm:"constraint:OnDelete:CASCADE;"`
+	Bans        []User         `gorm:"many2many:bans;constraint:OnDelete:CASCADE;"`
 }
 
 type GuildResponse struct {
