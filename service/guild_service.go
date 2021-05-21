@@ -61,18 +61,6 @@ func (g *guildService) CreateGuild(guild *model.Guild) error {
 	return g.GuildRepository.Create(guild)
 }
 
-func (g *guildService) CreateDefaultChannel(channel *model.Channel) error {
-	id, err := GenerateId()
-
-	if err != nil {
-		return err
-	}
-
-	channel.ID = id
-
-	return g.ChannelRepository.Create(channel)
-}
-
 func (g *guildService) GetUser(uid string) (*model.User, error) {
 	return g.GuildRepository.FindUserByID(uid)
 }
@@ -133,4 +121,8 @@ func (g *guildService) GetMemberSettings(userId string, guildId string) (*model.
 
 func (g *guildService) UpdateMemberSettings(settings *model.MemberSettings, userId string, guildId string) error {
 	return g.GuildRepository.UpdateMemberSettings(settings, userId, guildId)
+}
+
+func (g *guildService) FindUsersByIds(ids []string, guildId string) (*[]model.User, error) {
+	return g.GuildRepository.FindUsersByIds(ids, guildId)
 }

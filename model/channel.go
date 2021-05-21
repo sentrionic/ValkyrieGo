@@ -4,12 +4,12 @@ import "time"
 
 type Channel struct {
 	BaseModel
-	GuildID      string
-	Name         string    `gorm:"not null"`
-	IsPublic     bool      `gorm:"default:true"`
-	IsDM         bool      `gorm:"default:false"`
+	GuildID      *string
+	Name         string `gorm:"not null"`
+	IsPublic     bool
+	IsDM         bool
 	LastActivity time.Time `gorm:"autoCreateTime"`
-	Members      []User    `gorm:"many2many:channel_members;joinForeignKey:channels;joinReferences:users"`
+	PCMembers    []User    `gorm:"many2many:pcmembers;constraint:OnDelete:CASCADE;"`
 }
 
 type ChannelResponse struct {
@@ -19,4 +19,16 @@ type ChannelResponse struct {
 	CreatedAt       time.Time `json:"createdAt"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 	HasNotification bool      `json:"hasNotification"`
+}
+
+// SerializeChannel returns the channel API response.
+func (c Channel) SerializeChannel() ChannelResponse {
+	return ChannelResponse{
+		Id:              c.ID,
+		Name:            c.Name,
+		IsPublic:        c.IsPublic,
+		CreatedAt:       c.CreatedAt,
+		UpdatedAt:       c.UpdatedAt,
+		HasNotification: false,
+	}
 }

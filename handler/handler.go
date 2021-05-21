@@ -10,10 +10,11 @@ import (
 
 // Handler struct holds required services for handler to function
 type Handler struct {
-	userService   model.UserService
-	friendService model.FriendService
-	guildService  model.GuildService
-	MaxBodyBytes  int64
+	userService    model.UserService
+	friendService  model.FriendService
+	guildService   model.GuildService
+	channelService model.ChannelService
+	MaxBodyBytes   int64
 }
 
 // Config will hold services that will eventually be injected into this
@@ -23,6 +24,7 @@ type Config struct {
 	UserService     model.UserService
 	FriendService   model.FriendService
 	GuildService    model.GuildService
+	ChannelService  model.ChannelService
 	TimeoutDuration time.Duration
 	MaxBodyBytes    int64
 }
@@ -32,15 +34,17 @@ type Config struct {
 func NewHandler(c *Config) {
 	// Create a handler (which will later have injected services)
 	h := &Handler{
-		userService:   c.UserService,
-		friendService: c.FriendService,
-		guildService:  c.GuildService,
-		MaxBodyBytes:  c.MaxBodyBytes,
+		userService:    c.UserService,
+		friendService:  c.FriendService,
+		guildService:   c.GuildService,
+		channelService: c.ChannelService,
+		MaxBodyBytes:   c.MaxBodyBytes,
 	}
+
+	c.R.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
 
 	// Create an account group
 	ag := c.R.Group("api/account")
-	ag.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
 
 	ag.POST("/register", h.Register)
 	ag.POST("/login", h.Login)
@@ -61,8 +65,8 @@ func NewHandler(c *Config) {
 	ag.POST("/:memberId/friend/accept", h.AcceptFriendRequest)
 	ag.POST("/:memberId/friend/cancel", h.CancelFriendRequest)
 
+	// Create a guild group
 	gg := c.R.Group("api/guilds")
-	gg.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
 	gg.Use(middleware.AuthUser())
 
 	gg.GET("/:guildId/members", h.GetGuildMembers)
@@ -80,4 +84,27 @@ func NewHandler(c *Config) {
 	gg.POST("/:guildId/bans", h.BanMember)
 	gg.DELETE("/:guildId/bans", h.UnbanMember)
 	gg.POST("/:guildId/kick", h.KickMember)
+
+	// Create a channels group
+	cg := c.R.Group("api/channels")
+	cg.Use(middleware.AuthUser())
+
+	//Route parameters cause conflicts so they have to use the same parameter name
+	cg.GET("/:id", h.GuildChannels)                 // id -> guildId
+	cg.POST("/:id", h.CreateChannel)                // id -> guildId
+	cg.GET("/:id/members", h.PrivateChannelMembers) // id -> channelId
+	cg.POST("/:id/dm", h.GetOrCreateDM)             // id -> memberId
+	cg.GET("/me/dm", h.DirectMessages)              //
+	cg.PUT("/:id", h.EditChannel)                   // id -> channelId
+	cg.DELETE("/:id", h.DeleteChannel)              // id -> channelId
+	cg.DELETE("/:id/dm", h.CloseDM)                 // id -> channelId
+
+	// Create a messages group
+	mg := c.R.Group("api/messages")
+	mg.Use(middleware.AuthUser())
+
+	mg.GET("/:channelId", h.GetMessages)
+	mg.POST("/:channelId", h.CreateChannel)
+	mg.PUT("/:messageId", h.EditMessage)
+	mg.DELETE("/:messageId", h.DeleteMessage)
 }

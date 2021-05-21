@@ -32,7 +32,13 @@ func initDS() (*dataSources, error) {
 		return nil, fmt.Errorf("error opening db: %w", err)
 	}
 
-	if err := db.AutoMigrate(&model.User{}, &model.Guild{}, &model.Member{}, &model.Channel{}); err != nil {
+	if err := db.AutoMigrate(
+		&model.User{},
+		&model.Guild{},
+		&model.Member{},
+		&model.Channel{},
+		&model.DMMember{},
+	); err != nil {
 		return nil, fmt.Errorf("error migrating models: %w", err)
 	}
 

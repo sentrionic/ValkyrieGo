@@ -58,6 +58,10 @@ func inject(d *dataSources) (*gin.Engine, error) {
 		ChannelRepository: channelRepository,
 	})
 
+	channelService := service.NewChannelService(&service.CSConfig{
+		ChannelRepository: channelRepository,
+	})
+
 	// initialize gin.Engine
 	router := gin.Default()
 
@@ -93,6 +97,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 		UserService:     userService,
 		FriendService:   friendService,
 		GuildService:    guildService,
+		ChannelService:  channelService,
 		TimeoutDuration: time.Duration(ht) * time.Second,
 		MaxBodyBytes:    mbb,
 	})

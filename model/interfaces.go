@@ -36,7 +36,6 @@ type GuildService interface {
 	GetUserGuilds(uid string) (*[]GuildResponse, error)
 	GetGuildMembers(userId string, guildId string) (*[]MemberResponse, error)
 	CreateGuild(g *Guild) error
-	CreateDefaultChannel(c *Channel) error
 	GenerateInviteLink(ctx context.Context, guildId string, isPermanent bool) (string, error)
 	UpdateGuild(g *Guild) error
 	GetGuildIdFromInvite(ctx context.Context, token string) (string, error)
@@ -48,6 +47,23 @@ type GuildService interface {
 	GetBanList(guildId string) (*[]BanResponse, error)
 	GetMemberSettings(userId string, guildId string) (*MemberSettings, error)
 	UpdateMemberSettings(settings *MemberSettings, userId string, guildId string) error
+	FindUsersByIds(ids []string, guildId string) (*[]User, error)
+}
+
+type ChannelService interface {
+	CreateChannel(channel *Channel) error
+	GetChannels(userId string, guildId string) (*[]ChannelResponse, error)
+	Get(channelId string) (*Channel, error)
+	GetPrivateChannelMembers(channelId string) (*[]string, error)
+	GetDirectMessages(userId string) (*[]DirectMessage, error)
+	GetDirectMessageChannel(userId string, memberId string) (*string, error)
+	AddDMChannelMembers(memberIds []string, channelId string, userId string) error
+	SetDirectMessageStatus(dmId string, userId string, isOpen bool) error
+	DeleteChannel(channel *Channel) error
+	UpdateChannel(channel *Channel) error
+	CleanPCMembers(channelId string) error
+	AddPrivateChannelMembers(memberIds [] string, channelId string) error
+	RemovePrivateChannelMembers(memberIds [] string, channelId string) error
 }
 
 // UserRepository defines methods the service layer expects
@@ -81,11 +97,24 @@ type GuildRepository interface {
 	GetBanList(guildId string) (*[]BanResponse, error)
 	GetMemberSettings(userId string, guildId string) (*MemberSettings, error)
 	UpdateMemberSettings(settings *MemberSettings, userId string, guildId string) error
+	FindUsersByIds(ids []string, guildId string) (*[]User, error)
 }
 
 type ChannelRepository interface {
 	Create(c *Channel) error
 	GetGuildDefault(guildId string) (*Channel, error)
+	Get(userId string, guildId string) (*[]ChannelResponse, error)
+	GetDirectMessages(userId string) (*[]DirectMessage, error)
+	GetDirectMessageChannel(userId string, memberId string) (*string, error)
+	GetById(channelId string) (*Channel, error)
+	GetPrivateChannelMembers(channelId string) (*[]string, error)
+	AddDMChannelMembers(members []DMMember) error
+	SetDirectMessageStatus(dmId string, userId string, isOpen bool) error
+	DeleteChannel(channel *Channel) error
+	UpdateChannel(channel *Channel) error
+	CleanPCMembers(channelId string) error
+	AddPrivateChannelMembers(memberIds [] string, channelId string) error
+	RemovePrivateChannelMembers(memberIds [] string, channelId string) error
 }
 
 type ImageRepository interface {

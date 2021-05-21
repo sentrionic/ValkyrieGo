@@ -179,3 +179,16 @@ func (r *guildRepository) UpdateMemberSettings(settings *model.MemberSettings, u
 		Error
 	return err
 }
+
+func (r *guildRepository) FindUsersByIds(ids []string, guildId string) (*[]model.User, error) {
+	var users []model.User
+	result := r.DB.Raw(`
+		SELECT u.*
+		FROM users AS u
+		JOIN members m ON u."id"::text = m."user_id"
+		WHERE m."guild_id" = ?
+		AND m."user_id" IN ?
+	`, guildId, ids).Find(&users)
+
+	return &users, result.Error
+}

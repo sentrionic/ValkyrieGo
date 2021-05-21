@@ -45,7 +45,7 @@ func (h *Handler) GetMemberSettings(c *gin.Context) {
 // EditMemberSettings handler
 func (h *Handler) EditMemberSettings(c *gin.Context) {
 	guildId := c.Param("guildId")
-	_, err := h.guildService.GetGuild(guildId)
+	guild, err := h.guildService.GetGuild(guildId)
 
 	if err != nil {
 		e := apperrors.NewNotFound("guild", guildId)
@@ -57,6 +57,15 @@ func (h *Handler) EditMemberSettings(c *gin.Context) {
 	}
 
 	userId := c.MustGet("userId").(string)
+
+	if !isMember(guild, userId) {
+		e := apperrors.NewNotFound("guild", guildId)
+
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
+		return
+	}
 
 	var req model.MemberSettings
 

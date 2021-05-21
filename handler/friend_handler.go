@@ -80,7 +80,7 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 		return
 	}
 
-	if !isFriend(authUser, member) && !containsRequest(authUser, member) {
+	if !isFriend(authUser, member.ID) && !containsRequest(authUser, member) {
 		authUser.Requests = append(authUser.Requests, *member)
 		err = h.friendService.SaveRequests(authUser)
 
@@ -135,7 +135,7 @@ func (h *Handler) RemoveFriend(c *gin.Context) {
 		return
 	}
 
-	if isFriend(authUser, member) {
+	if isFriend(authUser, member.ID) {
 		err := h.friendService.RemoveFriend(member.ID, authUser.ID)
 
 		if err != nil {
@@ -276,9 +276,9 @@ func (h *Handler) CancelFriendRequest(c *gin.Context) {
 }
 
 // isFriend checks if the given users are friends
-func isFriend(user *model.User, current *model.User) bool {
+func isFriend(user *model.User, userId string) bool {
 	for _, v := range user.Friends {
-		if v.ID == current.ID {
+		if v.ID == userId {
 			return true
 		}
 	}

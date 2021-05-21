@@ -103,11 +103,11 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 	}
 
 	channel := model.Channel{
-		GuildID: guild.ID,
+		GuildID: &guild.ID,
 		Name:    "general",
 	}
 
-	if err := h.guildService.CreateDefaultChannel(&channel); err != nil {
+	if err := h.channelService.CreateChannel(&channel); err != nil {
 		log.Printf("Failed to create guild: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
