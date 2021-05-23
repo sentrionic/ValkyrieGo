@@ -38,6 +38,8 @@ func initDS() (*dataSources, error) {
 		&model.Member{},
 		&model.Channel{},
 		&model.DMMember{},
+		&model.Message{},
+		&model.Attachment{},
 	); err != nil {
 		return nil, fmt.Errorf("error migrating models: %w", err)
 	}

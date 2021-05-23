@@ -62,8 +62,19 @@ type ChannelService interface {
 	DeleteChannel(channel *Channel) error
 	UpdateChannel(channel *Channel) error
 	CleanPCMembers(channelId string) error
-	AddPrivateChannelMembers(memberIds [] string, channelId string) error
-	RemovePrivateChannelMembers(memberIds [] string, channelId string) error
+	AddPrivateChannelMembers(memberIds []string, channelId string) error
+	RemovePrivateChannelMembers(memberIds []string, channelId string) error
+	IsChannelMember(channel *Channel, userId string) error
+	OpenDMForAll(dmId string) error
+}
+
+type MessageService interface {
+	GetMessages(userId string, channel *Channel, cursor string) (*[]MessageResponse, error)
+	CreateMessage(message *Message) error
+	UpdateMessage(message *Message) error
+	DeleteMessage(message *Message) error
+	UploadFile(header *multipart.FileHeader, channelId string) (*Attachment, error)
+	Get(messageId string) (*Message, error)
 }
 
 // UserRepository defines methods the service layer expects
@@ -98,6 +109,7 @@ type GuildRepository interface {
 	GetMemberSettings(userId string, guildId string) (*MemberSettings, error)
 	UpdateMemberSettings(settings *MemberSettings, userId string, guildId string) error
 	FindUsersByIds(ids []string, guildId string) (*[]User, error)
+	GetMember(userId, guildId string) (*User, error)
 }
 
 type ChannelRepository interface {
@@ -113,13 +125,15 @@ type ChannelRepository interface {
 	DeleteChannel(channel *Channel) error
 	UpdateChannel(channel *Channel) error
 	CleanPCMembers(channelId string) error
-	AddPrivateChannelMembers(memberIds [] string, channelId string) error
-	RemovePrivateChannelMembers(memberIds [] string, channelId string) error
+	AddPrivateChannelMembers(memberIds []string, channelId string) error
+	RemovePrivateChannelMembers(memberIds []string, channelId string) error
+	FindDMByUserAndChannelId(channelId, userId string) (string, error)
+	OpenDMForAll(dmId string) error
 }
 
-type ImageRepository interface {
+type FileRepository interface {
 	UploadAvatar(header *multipart.FileHeader, directory string) (string, error)
-	UploadImage(header *multipart.FileHeader, directory string) (string, error)
+	UploadFile(header *multipart.FileHeader, directory, filename, mimetype string) (string, error)
 	DeleteImage(key string) error
 }
 
@@ -133,4 +147,12 @@ type RedisRepository interface {
 	SaveInvite(ctx context.Context, guildId string, id string, isPermanent bool) error
 	GetInvite(ctx context.Context, token string) (string, error)
 	InvalidateInvites(ctx context.Context, guild *Guild)
+}
+
+type MessageRepository interface {
+	GetMessages(userId string, channel *Channel, cursor string) (*[]MessageResponse, error)
+	CreateMessage(message *Message) error
+	UpdateMessage(message *Message) error
+	DeleteMessage(message *Message) error
+	GetById(messageId string) (*Message, error)
 }

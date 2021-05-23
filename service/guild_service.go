@@ -11,7 +11,7 @@ import (
 // for use in service methods
 type guildService struct {
 	UserRepository    model.UserRepository
-	ImageRepository   model.ImageRepository
+	FileRepository    model.FileRepository
 	RedisRepository   model.RedisRepository
 	GuildRepository   model.GuildRepository
 	ChannelRepository model.ChannelRepository
@@ -21,7 +21,7 @@ type guildService struct {
 // this service layer
 type GSConfig struct {
 	UserRepository    model.UserRepository
-	ImageRepository   model.ImageRepository
+	FileRepository    model.FileRepository
 	RedisRepository   model.RedisRepository
 	GuildRepository   model.GuildRepository
 	ChannelRepository model.ChannelRepository
@@ -32,7 +32,7 @@ type GSConfig struct {
 func NewGuildService(c *GSConfig) model.GuildService {
 	return &guildService{
 		UserRepository:    c.UserRepository,
-		ImageRepository:   c.ImageRepository,
+		FileRepository:    c.FileRepository,
 		RedisRepository:   c.RedisRepository,
 		GuildRepository:   c.GuildRepository,
 		ChannelRepository: c.ChannelRepository,

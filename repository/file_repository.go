@@ -17,20 +17,20 @@ import (
 	"mime/multipart"
 )
 
-type s3ImageRepository struct {
+type s3FileRepository struct {
 	S3Session  *session.Session
 	BucketName string
 }
 
-// NewImageRepository is a factory for initializing User Repositories
-func NewImageRepository(session *session.Session, bucketName string) model.ImageRepository {
-	return &s3ImageRepository{
+// NewFileRepository is a factory for initializing User Repositories
+func NewFileRepository(session *session.Session, bucketName string) model.FileRepository {
+	return &s3FileRepository{
 		S3Session:  session,
 		BucketName: bucketName,
 	}
 }
 
-func (s *s3ImageRepository) UploadAvatar(header *multipart.FileHeader, directory string) (string, error) {
+func (s *s3FileRepository) UploadAvatar(header *multipart.FileHeader, directory string) (string, error) {
 	uploader := s3manager.NewUploader(s.S3Session)
 
 	id, _ := service.GenerateId()
@@ -75,11 +75,36 @@ func (s *s3ImageRepository) UploadAvatar(header *multipart.FileHeader, directory
 	return up.Location, nil
 }
 
-func (s *s3ImageRepository) UploadImage(header *multipart.FileHeader, directory string) (string, error) {
-	panic("implement me")
+func (s *s3FileRepository) UploadFile(header *multipart.FileHeader, directory, filename, mimetype string) (string, error) {
+	uploader := s3manager.NewUploader(s.S3Session)
+
+	key := fmt.Sprintf("files/%s/%s", directory, filename)
+
+	file, err := header.Open()
+
+	if err != nil {
+		return "", err
+	}
+
+	up, err := uploader.Upload(&s3manager.UploadInput{
+		Body:        file,
+		Bucket:      aws.String(s.BucketName),
+		ContentType: aws.String("image/jpeg"),
+		Key:         aws.String(key),
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if err := file.Close(); err != nil {
+		return "", err
+	}
+
+	return up.Location, nil
 }
 
-func (s *s3ImageRepository) DeleteImage(key string) error {
+func (s *s3FileRepository) DeleteImage(key string) error {
 	srv := s3.New(s.S3Session)
 	_, err := srv.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(s.BucketName),

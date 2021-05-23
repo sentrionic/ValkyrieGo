@@ -2,18 +2,21 @@ package service
 
 import (
 	"github.com/sentrionic/valkyrie/model"
+	"github.com/sentrionic/valkyrie/model/apperrors"
 )
 
 // channelService acts as a struct for injecting an implementation of UserRepository
 // for use in service methods
 type channelService struct {
 	ChannelRepository model.ChannelRepository
+	GuildRepository   model.GuildRepository
 }
 
 // CSConfig will hold repositories that will eventually be injected into this
 // this service layer
 type CSConfig struct {
 	ChannelRepository model.ChannelRepository
+	GuildRepository   model.GuildRepository
 }
 
 // NewChannelService is a factory function for
@@ -21,6 +24,7 @@ type CSConfig struct {
 func NewChannelService(c *CSConfig) model.ChannelService {
 	return &channelService{
 		ChannelRepository: c.ChannelRepository,
+		GuildRepository:   c.GuildRepository,
 	}
 }
 
@@ -99,4 +103,40 @@ func (c *channelService) AddPrivateChannelMembers(memberIds []string, channelId 
 
 func (c *channelService) RemovePrivateChannelMembers(memberIds []string, channelId string) error {
 	return c.ChannelRepository.RemovePrivateChannelMembers(memberIds, channelId)
+}
+
+func (c *channelService) OpenDMForAll(dmId string) error {
+	return c.ChannelRepository.OpenDMForAll(dmId)
+}
+
+// IsChannelMember checks if the user has access to the given channel.
+// Returns an error if they do not, otherwise nil
+func (c *channelService) IsChannelMember(channel *model.Channel, userId string) error {
+	// Check if user has access to the channel if it's private
+	if !channel.IsPublic {
+		// Channel is DM -> Check if one of the members
+		if channel.IsDM {
+			id, err := c.ChannelRepository.FindDMByUserAndChannelId(channel.ID, userId)
+
+			if err != nil || id == "" {
+				return apperrors.NewAuthorization("Not Authorized")
+			}
+			return nil
+			// Channel is private
+		} else {
+			for _, member := range channel.PCMembers {
+				if member.ID == userId {
+					return nil
+				}
+			}
+			return apperrors.NewAuthorization("Not Authorized")
+		}
+		// Check if user has access to the channel
+	} else {
+		member, err := c.GuildRepository.GetMember(userId, *channel.GuildID)
+		if err != nil || member.ID == "" {
+			return apperrors.NewAuthorization("Not Authorized")
+		}
+		return nil
+	}
 }

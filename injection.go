@@ -25,9 +25,10 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	friendRepository := repository.NewFriendRepository(d.DB)
 	guildRepository := repository.NewGuildRepository(d.DB)
 	channelRepository := repository.NewChannelRepository(d.DB)
+	messageRepository := repository.NewMessageRepository(d.DB)
 
 	bucketName := os.Getenv("AWS_STORAGE_BUCKET_NAME")
-	imageRepository := repository.NewImageRepository(d.S3Session, bucketName)
+	fileRepository := repository.NewFileRepository(d.S3Session, bucketName)
 	redisRepository := repository.NewRedisRepository(d.RedisClient)
 
 	gmailUser := os.Getenv("GMAIL_USER")
@@ -40,7 +41,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	 */
 	userService := service.NewUserService(&service.USConfig{
 		UserRepository:  userRepository,
-		ImageRepository: imageRepository,
+		FileRepository:  fileRepository,
 		RedisRepository: redisRepository,
 		MailRepository:  mailRepository,
 	})
@@ -52,7 +53,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 
 	guildService := service.NewGuildService(&service.GSConfig{
 		UserRepository:    userRepository,
-		ImageRepository:   imageRepository,
+		FileRepository:    fileRepository,
 		RedisRepository:   redisRepository,
 		GuildRepository:   guildRepository,
 		ChannelRepository: channelRepository,
@@ -60,10 +61,19 @@ func inject(d *dataSources) (*gin.Engine, error) {
 
 	channelService := service.NewChannelService(&service.CSConfig{
 		ChannelRepository: channelRepository,
+		GuildRepository:   guildRepository,
+	})
+
+	messageService := service.NewMessageService(&service.MSConfig{
+		MessageRepository: messageRepository,
+		FileRepository:    fileRepository,
 	})
 
 	// initialize gin.Engine
 	router := gin.Default()
+
+	// set cors settings
+	router.Use(CORSMiddleware(origin))
 
 	redisURL := os.Getenv("REDIS_URL")
 	secret := os.Getenv("SECRET")
@@ -98,9 +108,26 @@ func inject(d *dataSources) (*gin.Engine, error) {
 		FriendService:   friendService,
 		GuildService:    guildService,
 		ChannelService:  channelService,
+		MessageService:  messageService,
 		TimeoutDuration: time.Duration(ht) * time.Second,
 		MaxBodyBytes:    mbb,
 	})
 
 	return router, nil
+}
+
+func CORSMiddleware(origin string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
 }

@@ -55,11 +55,19 @@ func (r *channelRepository) Get(userId string, guildId string) (*[]model.Channel
 	return &channels, result.Error
 }
 
-func (r *channelRepository) GetDirectMessages(userId string) (*[]model.DirectMessage, error) {
-	var channels []model.DirectMessage
+type DMQuery struct {
+	ChannelId string
+	Id        string
+	Username  string
+	Image     string
+	IsOnline  bool
+	IsFriend  bool
+}
 
-	result := r.DB.
-		Debug().
+func (r *channelRepository) GetDirectMessages(userId string) (*[]model.DirectMessage, error) {
+	var results []DMQuery
+
+	err := r.DB.
 		Raw(`
 			SELECT dm."channel_id", u.username, u.image, u.id, u."is_online", u."created_at", u."updated_at"
 			FROM users u
@@ -68,7 +76,7 @@ func (r *channelRepository) GetDirectMessages(userId string) (*[]model.DirectMes
 			AND dm."channel_id" IN (
 				SELECT DISTINCT c.id
 				FROM channels as c
-				LEFT OUTER JOIN dm_channels as dm
+				LEFT OUTER JOIN dm_members as dm
 				ON c."id" = dm."channel_id"
 				JOIN users u on dm."user_id" = u.id
 				WHERE c."is_public" = false
@@ -78,9 +86,25 @@ func (r *channelRepository) GetDirectMessages(userId string) (*[]model.DirectMes
 			)
 			order by dm."updated_at" DESC 
 		`, sql.Named("id", userId)).
-		Scan(&channels)
+		Scan(&results)
 
-	return &channels, result.Error
+	var channels []model.DirectMessage
+
+	for _, dm := range results {
+		channel := model.DirectMessage{
+			Id: dm.ChannelId,
+			User: model.DMUser{
+				Id:       dm.Id,
+				Username: dm.Username,
+				Image:    dm.Image,
+				IsOnline: dm.IsOnline,
+				IsFriend: dm.IsFriend,
+			},
+		}
+		channels = append(channels, channel)
+	}
+
+	return &channels, err.Error
 }
 
 func (r *channelRepository) GetDirectMessageChannel(userId string, memberId string) (*string, error) {
@@ -102,7 +126,7 @@ func (r *channelRepository) GetDirectMessageChannel(userId string, memberId stri
 
 func (r *channelRepository) GetById(channelId string) (*model.Channel, error) {
 	var channel model.Channel
-	err := r.DB.Where("id = ?", channelId).First(&channel).Error
+	err := r.DB.Preload("PCMembers").Where("id = ?", channelId).First(&channel).Error
 	return &channel, err
 }
 
@@ -124,6 +148,18 @@ func (r *channelRepository) SetDirectMessageStatus(dmId string, userId string, i
 		Where("channel_id = ? AND user_id = ?", dmId, userId).
 		Updates(map[string]interface{}{
 			"is_open":    isOpen,
+			"updated_at": time.Now(),
+		}).
+		Error
+	return err
+}
+
+func (r *channelRepository) OpenDMForAll(dmId string) error {
+	err := r.DB.
+		Table("dm_members").
+		Where("channel_id = ? ", dmId).
+		Updates(map[string]interface{}{
+			"is_open":    true,
 			"updated_at": time.Now(),
 		}).
 		Error
@@ -154,4 +190,13 @@ func (r *channelRepository) AddPrivateChannelMembers(memberIds []string, channel
 
 func (r *channelRepository) RemovePrivateChannelMembers(memberIds []string, channelId string) error {
 	return r.DB.Exec("DELETE FROM pcmembers WHERE channel_id = ? AND user_id IN ?", channelId, memberIds).Error
+}
+
+func (r *channelRepository) FindDMByUserAndChannelId(channelId, userId string) (string, error) {
+	var id string
+	err := r.DB.
+		Table("dm_members").
+		Where("user_id = ? AND channel_id = ?", userId, channelId).
+		First(&id).Error
+	return id, err
 }

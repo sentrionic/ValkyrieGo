@@ -14,6 +14,7 @@ type Handler struct {
 	friendService  model.FriendService
 	guildService   model.GuildService
 	channelService model.ChannelService
+	messageService model.MessageService
 	MaxBodyBytes   int64
 }
 
@@ -25,6 +26,7 @@ type Config struct {
 	FriendService   model.FriendService
 	GuildService    model.GuildService
 	ChannelService  model.ChannelService
+	MessageService  model.MessageService
 	TimeoutDuration time.Duration
 	MaxBodyBytes    int64
 }
@@ -38,6 +40,7 @@ func NewHandler(c *Config) {
 		friendService:  c.FriendService,
 		guildService:   c.GuildService,
 		channelService: c.ChannelService,
+		messageService: c.MessageService,
 		MaxBodyBytes:   c.MaxBodyBytes,
 	}
 
@@ -54,8 +57,8 @@ func NewHandler(c *Config) {
 
 	ag.Use(middleware.AuthUser())
 
-	ag.GET("/", h.Me)
-	ag.PUT("/", h.Edit)
+	ag.GET("", h.Me)
+	ag.PUT("", h.Edit)
 	ag.PUT("/change-password", h.ChangePassword)
 
 	ag.GET("/me/friends", h.GetUserFriends)
@@ -70,7 +73,7 @@ func NewHandler(c *Config) {
 	gg.Use(middleware.AuthUser())
 
 	gg.GET("/:guildId/members", h.GetGuildMembers)
-	gg.GET("/", h.GetUserGuilds)
+	gg.GET("", h.GetUserGuilds)
 	gg.POST("/create", h.CreateGuild)
 	gg.GET("/:guildId/invite", h.GetInvite)
 	gg.DELETE("/:guildId/invite", h.DeleteGuildInvites)
@@ -104,7 +107,7 @@ func NewHandler(c *Config) {
 	mg.Use(middleware.AuthUser())
 
 	mg.GET("/:channelId", h.GetMessages)
-	mg.POST("/:channelId", h.CreateChannel)
+	mg.POST("/:channelId", h.CreateMessage)
 	mg.PUT("/:messageId", h.EditMessage)
 	mg.DELETE("/:messageId", h.DeleteMessage)
 }

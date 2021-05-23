@@ -15,7 +15,7 @@ import (
 // for use in service methods
 type userService struct {
 	UserRepository  model.UserRepository
-	ImageRepository model.ImageRepository
+	FileRepository  model.FileRepository
 	RedisRepository model.RedisRepository
 	MailRepository  model.MailRepository
 }
@@ -24,7 +24,7 @@ type userService struct {
 // this service layer
 type USConfig struct {
 	UserRepository  model.UserRepository
-	ImageRepository model.ImageRepository
+	FileRepository  model.FileRepository
 	RedisRepository model.RedisRepository
 	MailRepository  model.MailRepository
 }
@@ -34,7 +34,7 @@ type USConfig struct {
 func NewUserService(c *USConfig) model.UserService {
 	return &userService{
 		UserRepository:  c.UserRepository,
-		ImageRepository: c.ImageRepository,
+		FileRepository:  c.FileRepository,
 		RedisRepository: c.RedisRepository,
 		MailRepository:  c.MailRepository,
 	}
@@ -119,11 +119,11 @@ func (s *userService) CheckEmail(email string) bool {
 }
 
 func (s *userService) ChangeAvatar(header *multipart.FileHeader, directory string) (string, error) {
-	return s.ImageRepository.UploadAvatar(header, directory)
+	return s.FileRepository.UploadAvatar(header, directory)
 }
 
 func (s *userService) DeleteImage(key string) error {
-	return s.ImageRepository.DeleteImage(key)
+	return s.FileRepository.DeleteImage(key)
 }
 
 func (s *userService) ChangePassword(password string, u *model.User) error {

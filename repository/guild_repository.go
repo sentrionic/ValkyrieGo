@@ -192,3 +192,16 @@ func (r *guildRepository) FindUsersByIds(ids []string, guildId string) (*[]model
 
 	return &users, result.Error
 }
+
+func (r *guildRepository) GetMember(userId, guildId string) (*model.User, error) {
+	var user model.User
+	result := r.DB.Raw(`
+		SELECT u.*
+		FROM users AS u
+		JOIN members m ON u."id"::text = m."user_id"
+		WHERE m."guild_id" = ?
+		AND m."user_id" = ?
+	`, guildId, userId).Find(&user)
+
+	return &user, result.Error
+}

@@ -5,11 +5,12 @@ import "time"
 type Channel struct {
 	BaseModel
 	GuildID      *string
-	Name         string `gorm:"not null"`
+	Name         string
 	IsPublic     bool
 	IsDM         bool
 	LastActivity time.Time `gorm:"autoCreateTime"`
-	PCMembers    []User    `gorm:"many2many:pcmembers;constraint:OnDelete:CASCADE;"`
+	PCMembers    []User    `gorm:"many2many:pcmembers"`
+	Messages     []Message
 }
 
 type ChannelResponse struct {
