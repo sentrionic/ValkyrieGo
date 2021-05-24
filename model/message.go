@@ -5,7 +5,7 @@ import "time"
 type Message struct {
 	BaseModel
 	Text       *string
-	UserId     string
+	UserId     string      `gorm:"constraint:OnDelete:CASCADE;"`
 	ChannelId  string      `gorm:"constraint:OnDelete:CASCADE;"`
 	Attachment *Attachment `gorm:"constraint:OnDelete:CASCADE;"`
 }

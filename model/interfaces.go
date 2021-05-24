@@ -57,6 +57,7 @@ type ChannelService interface {
 	GetPrivateChannelMembers(channelId string) (*[]string, error)
 	GetDirectMessages(userId string) (*[]DirectMessage, error)
 	GetDirectMessageChannel(userId string, memberId string) (*string, error)
+	GetDMByUserAndChannel(userId string, channelId string) (string, error)
 	AddDMChannelMembers(memberIds []string, channelId string, userId string) error
 	SetDirectMessageStatus(dmId string, userId string, isOpen bool) error
 	DeleteChannel(channel *Channel) error

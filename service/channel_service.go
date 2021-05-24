@@ -109,6 +109,10 @@ func (c *channelService) OpenDMForAll(dmId string) error {
 	return c.ChannelRepository.OpenDMForAll(dmId)
 }
 
+func (c *channelService) GetDMByUserAndChannel(userId string, channelId string) (string, error) {
+	return c.ChannelRepository.FindDMByUserAndChannelId(channelId, userId)
+}
+
 // IsChannelMember checks if the user has access to the given channel.
 // Returns an error if they do not, otherwise nil
 func (c *channelService) IsChannelMember(channel *model.Channel, userId string) error {

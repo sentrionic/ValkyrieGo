@@ -5,6 +5,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	cors "github.com/rs/cors/wrapper/gin"
 	"github.com/sentrionic/valkyrie/handler"
 	"github.com/sentrionic/valkyrie/repository"
 	"github.com/sentrionic/valkyrie/service"
@@ -73,7 +74,12 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	router := gin.Default()
 
 	// set cors settings
-	router.Use(CORSMiddleware(origin))
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{origin},
+		AllowCredentials: true,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
+	})
+	router.Use(c)
 
 	redisURL := os.Getenv("REDIS_URL")
 	secret := os.Getenv("SECRET")
@@ -114,20 +120,4 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	})
 
 	return router, nil
-}
-
-func CORSMiddleware(origin string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
 }

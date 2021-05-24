@@ -168,7 +168,6 @@ func (r *channelRepository) OpenDMForAll(dmId string) error {
 
 func (r *channelRepository) DeleteChannel(channel *model.Channel) error {
 	return r.DB.
-		Exec("DELETE FROM pcmembers WHERE channel_id = ?", channel.ID).
 		Delete(&channel).Error
 }
 
@@ -177,7 +176,9 @@ func (r *channelRepository) UpdateChannel(channel *model.Channel) error {
 }
 
 func (r *channelRepository) CleanPCMembers(channelId string) error {
-	return r.DB.Exec("DELETE FROM pcmembers WHERE channel_id = ?", channelId).Error
+	err := r.DB.
+		Exec("DELETE FROM pcmembers WHERE channel_id = ?", channelId)
+	return err.Error
 }
 
 func (r *channelRepository) AddPrivateChannelMembers(memberIds []string, channelId string) error {
@@ -189,14 +190,15 @@ func (r *channelRepository) AddPrivateChannelMembers(memberIds []string, channel
 }
 
 func (r *channelRepository) RemovePrivateChannelMembers(memberIds []string, channelId string) error {
-	return r.DB.Exec("DELETE FROM pcmembers WHERE channel_id = ? AND user_id IN ?", channelId, memberIds).Error
+	return r.DB.
+		Exec("DELETE FROM pcmembers WHERE channel_id = ? AND user_id IN ?", channelId, memberIds).
+		Error
 }
 
 func (r *channelRepository) FindDMByUserAndChannelId(channelId, userId string) (string, error) {
 	var id string
 	err := r.DB.
-		Table("dm_members").
-		Where("user_id = ? AND channel_id = ?", userId, channelId).
-		First(&id).Error
+		Raw("SELECT id FROM dm_members WHERE user_id = ? AND channel_id = ?", userId, channelId).
+		Scan(&id).Error
 	return id, err
 }

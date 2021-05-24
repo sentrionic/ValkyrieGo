@@ -103,8 +103,9 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 	}
 
 	channel := model.Channel{
-		GuildID: &guild.ID,
-		Name:    "general",
+		GuildID:  &guild.ID,
+		Name:     "general",
+		IsPublic: true,
 	}
 
 	if err := h.channelService.CreateChannel(&channel); err != nil {
@@ -338,10 +339,8 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 	guildId, err := h.guildService.GetGuildIdFromInvite(ctx, req.Link)
 
 	if err != nil {
-		e := apperrors.NewNotFound("guild", guildId)
-
-		c.JSON(e.Status(), gin.H{
-			"error": e,
+		c.JSON(http.StatusNotFound, gin.H{
+			"message": "Invalid Link or the server got deleted",
 		})
 		return
 	}
@@ -349,19 +348,17 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 	guild, err := h.guildService.GetGuild(guildId)
 
 	if err != nil {
-		e := apperrors.NewNotFound("guild", guildId)
-
-		c.JSON(e.Status(), gin.H{
-			"error": e,
+		c.JSON(http.StatusNotFound, gin.H{
+			"message": "Invalid Link or the server got deleted",
 		})
 		return
 	}
 
 	if isBanned(guild, authUser.ID) {
-		e := apperrors.NewBadRequest("you are banned from this server")
+		e := apperrors.NewBadRequest("You are banned from this server")
 
 		c.JSON(e.Status(), gin.H{
-			"error": e,
+			"message": e,
 		})
 		return
 	}

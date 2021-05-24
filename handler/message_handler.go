@@ -35,7 +35,9 @@ func (h *Handler) GetMessages(c *gin.Context) {
 		return
 	}
 
-	messages, err := h.messageService.GetMessages(userId, channel, "")
+	cursor := c.Query("cursor")
+
+	messages, err := h.messageService.GetMessages(userId, channel, cursor)
 
 	if err != nil {
 		e := apperrors.NewNotFound("messages", channelId)

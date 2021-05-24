@@ -3,7 +3,7 @@ package model
 import "time"
 
 type Member struct {
-	UserID    string    `gorm:"primaryKey"`
+	UserID    string    `gorm:"primaryKey;constraint:OnDelete:CASCADE;"`
 	GuildID   string    `gorm:"primaryKey;constraint:OnDelete:CASCADE;"`
 	Nickname  *string   `gorm:"nickname"`
 	Color     *string   `gorm:"color"`

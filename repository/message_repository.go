@@ -56,7 +56,7 @@ func (r *messageRepository) GetMessages(userId string, channel *model.Channel, c
 	crs := ""
 	if cursor != "" {
 		date := cursor[:len(cursor)-6]
-		crs = fmt.Sprintf("AND message.created_at < %s", date)
+		crs = fmt.Sprintf("AND messages.created_at < '%s'", date)
 	}
 
 	err := r.DB.

@@ -349,7 +349,10 @@ func (h *Handler) EditChannel(c *gin.Context) {
 
 	// Used to be private and now is public
 	if *req.IsPublic && !channel.IsPublic {
-		_ = h.channelService.CleanPCMembers(channelId)
+		err = h.channelService.CleanPCMembers(channelId)
+		if err != nil {
+			log.Printf("error removing pc members: %v", err)
+		}
 	}
 
 	channel.IsPublic = *req.IsPublic
@@ -475,18 +478,11 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 
 func (h *Handler) CloseDM(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
-	memberId := c.Param("id")
+	channelId := c.Param("id")
 
-	if userId == memberId {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "you cannot close yourself",
-		})
-		return
-	}
+	dm, err := h.channelService.GetDMByUserAndChannel(userId, channelId)
 
-	dm, err := h.channelService.GetDirectMessageChannel(userId, memberId)
-
-	if err != nil || dm == nil {
+	if err != nil || dm == "" {
 		log.Printf("Unable to find or create dms for user id: %v\n%v", userId, err)
 		e := apperrors.NewNotFound("dms", userId)
 
@@ -496,7 +492,7 @@ func (h *Handler) CloseDM(c *gin.Context) {
 		return
 	}
 
-	_ = h.channelService.SetDirectMessageStatus(*dm, userId, false)
+	_ = h.channelService.SetDirectMessageStatus(channelId, userId, false)
 
 	c.JSON(http.StatusOK, true)
 }

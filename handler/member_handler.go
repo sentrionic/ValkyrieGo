@@ -121,6 +121,12 @@ func (h *Handler) GetBanList(c *gin.Context) {
 		return
 	}
 
+	if len(*bans) == 0 {
+		empty := make([]model.BanResponse, 0)
+		c.JSON(http.StatusOK, empty)
+		return
+	}
+
 	c.JSON(http.StatusOK, bans)
 }
 

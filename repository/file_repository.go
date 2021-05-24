@@ -89,7 +89,7 @@ func (s *s3FileRepository) UploadFile(header *multipart.FileHeader, directory, f
 	up, err := uploader.Upload(&s3manager.UploadInput{
 		Body:        file,
 		Bucket:      aws.String(s.BucketName),
-		ContentType: aws.String("image/jpeg"),
+		ContentType: aws.String(mimetype),
 		Key:         aws.String(key),
 	})
 

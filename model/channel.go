@@ -9,8 +9,8 @@ type Channel struct {
 	IsPublic     bool
 	IsDM         bool
 	LastActivity time.Time `gorm:"autoCreateTime"`
-	PCMembers    []User    `gorm:"many2many:pcmembers"`
-	Messages     []Message
+	PCMembers    []User    `gorm:"many2many:pcmembers;constraint:OnDelete:CASCADE;"`
+	Messages     []Message `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 type ChannelResponse struct {
