@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/sentrionic/valkyrie/handler/ws"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
@@ -156,9 +158,17 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		response.User.Color = settings.Color
 	}
 
-	fmt.Println(response)
+	data, err := json.Marshal(model.WebsocketMessage{
+		Action: ws.NewMessageAction,
+		Data:   response,
+	})
+
+	if err != nil {
+		log.Printf("error marshalling response: %v\n", err)
+	}
 
 	//TODO: Emit new_message event
+	h.WsServer.broadcastToRoom(data, channelId)
 
 	if channel.IsDM {
 		// Open the DM and push it to the top

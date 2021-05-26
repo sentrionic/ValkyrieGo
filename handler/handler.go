@@ -16,6 +16,7 @@ type Handler struct {
 	channelService model.ChannelService
 	messageService model.MessageService
 	MaxBodyBytes   int64
+	WsServer       *WsServer
 }
 
 // Config will hold services that will eventually be injected into this
@@ -34,6 +35,15 @@ type Config struct {
 // NewHandler initializes the handler with required injected services along with http routes
 // Does not return as it deals directly with a reference to the gin Engine
 func NewHandler(c *Config) {
+
+	// Websocket Setup
+	wsServer := NewWebsocketServer()
+	go wsServer.Run()
+
+	c.R.GET("/ws", func(c *gin.Context) {
+		ServeWs(wsServer, c.Writer, c.Request)
+	})
+
 	// Create a handler (which will later have injected services)
 	h := &Handler{
 		userService:    c.UserService,
@@ -42,6 +52,7 @@ func NewHandler(c *Config) {
 		channelService: c.ChannelService,
 		messageService: c.MessageService,
 		MaxBodyBytes:   c.MaxBodyBytes,
+		WsServer:       wsServer,
 	}
 
 	c.R.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
