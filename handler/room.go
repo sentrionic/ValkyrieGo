@@ -31,6 +31,9 @@ func (room *Room) RunRoom() {
 
 		case client := <-room.unregister:
 			room.unregisterClientInRoom(client)
+
+		case message := <-room.broadcast:
+			room.broadcastToClientsInRoom(message.Encode())
 		}
 	}
 }

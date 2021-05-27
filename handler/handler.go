@@ -37,11 +37,11 @@ type Config struct {
 func NewHandler(c *Config) {
 
 	// Websocket Setup
-	wsServer := NewWebsocketServer()
+	wsServer := NewWebsocketServer(c)
 	go wsServer.Run()
 
-	c.R.GET("/ws", func(c *gin.Context) {
-		ServeWs(wsServer, c.Writer, c.Request)
+	c.R.GET("/ws", middleware.AuthUser(), func(c *gin.Context) {
+		ServeWs(wsServer, c)
 	})
 
 	// Create a handler (which will later have injected services)

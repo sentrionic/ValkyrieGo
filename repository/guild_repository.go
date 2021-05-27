@@ -205,3 +205,14 @@ func (r *guildRepository) GetMember(userId, guildId string) (*model.User, error)
 
 	return &user, result.Error
 }
+
+func (r *guildRepository) UpdateMemberLastSeen(userId, guildId string) error {
+	err := r.DB.
+		Table("members").
+		Where("user_id = ? AND guild_id = ?", userId, guildId).
+		Updates(map[string]interface{}{
+			"last_seen": time.Now(),
+		}).
+		Error
+	return err
+}

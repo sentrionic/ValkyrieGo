@@ -8,6 +8,7 @@ import (
 type ReceivedMessage struct {
 	Action string `json:"action"`
 	Room   string `json:"room"`
+	Message *string `json:"message"`
 }
 
 type WebsocketMessage struct {
@@ -15,7 +16,7 @@ type WebsocketMessage struct {
 	Data   interface{} `json:"data"`
 }
 
-func (message *WebsocketMessage) encode() []byte {
+func (message *WebsocketMessage) Encode() []byte {
 	encoding, err := json.Marshal(message)
 	if err != nil {
 		log.Println(err)

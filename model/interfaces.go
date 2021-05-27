@@ -48,6 +48,7 @@ type GuildService interface {
 	GetMemberSettings(userId string, guildId string) (*MemberSettings, error)
 	UpdateMemberSettings(settings *MemberSettings, userId string, guildId string) error
 	FindUsersByIds(ids []string, guildId string) (*[]User, error)
+	UpdateMemberLastSeen(userId, guildId string) error
 }
 
 type ChannelService interface {
@@ -111,6 +112,7 @@ type GuildRepository interface {
 	UpdateMemberSettings(settings *MemberSettings, userId string, guildId string) error
 	FindUsersByIds(ids []string, guildId string) (*[]User, error)
 	GetMember(userId, guildId string) (*User, error)
+	UpdateMemberLastSeen(userId, guildId string) error
 }
 
 type ChannelRepository interface {

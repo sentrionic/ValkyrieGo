@@ -1,21 +1,31 @@
 package handler
 
+import (
+	"github.com/sentrionic/valkyrie/model"
+)
+
 type WsServer struct {
-	clients    map[*Client]bool
-	register   chan *Client
-	unregister chan *Client
-	broadcast  chan []byte
-	rooms      map[*Room]bool
+	clients        map[*Client]bool
+	register       chan *Client
+	unregister     chan *Client
+	broadcast      chan []byte
+	rooms          map[*Room]bool
+	channelService model.ChannelService
+	guildService   model.GuildService
+	userService    model.UserService
 }
 
 // NewWebsocketServer creates a new WsServer type
-func NewWebsocketServer() *WsServer {
+func NewWebsocketServer(c *Config) *WsServer {
 	return &WsServer{
-		clients:    make(map[*Client]bool),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		broadcast:  make(chan []byte),
-		rooms:      make(map[*Room]bool),
+		clients:        make(map[*Client]bool),
+		register:       make(chan *Client),
+		unregister:     make(chan *Client),
+		broadcast:      make(chan []byte),
+		rooms:          make(map[*Room]bool),
+		channelService: c.ChannelService,
+		guildService:   c.GuildService,
+		userService:    c.UserService,
 	}
 }
 

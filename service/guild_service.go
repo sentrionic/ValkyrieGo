@@ -126,3 +126,7 @@ func (g *guildService) UpdateMemberSettings(settings *model.MemberSettings, user
 func (g *guildService) FindUsersByIds(ids []string, guildId string) (*[]model.User, error) {
 	return g.GuildRepository.FindUsersByIds(ids, guildId)
 }
+
+func (g *guildService) UpdateMemberLastSeen(userId, guildId string) error {
+	return g.GuildRepository.UpdateMemberLastSeen(userId, guildId)
+}

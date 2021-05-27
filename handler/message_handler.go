@@ -167,7 +167,6 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		log.Printf("error marshalling response: %v\n", err)
 	}
 
-	//TODO: Emit new_message event
 	h.WsServer.broadcastToRoom(data, channelId)
 
 	if channel.IsDM {
