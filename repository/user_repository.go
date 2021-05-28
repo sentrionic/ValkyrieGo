@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"errors"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
@@ -68,6 +69,35 @@ func (r *userRepository) FindByEmail(email string) (*model.User, error) {
 func (r *userRepository) Update(u *model.User) error {
 	result := r.DB.Save(&u)
 	return result.Error
+}
+
+func (r *userRepository) GetFriendAndGuildIds(userId string) (*[]string, error) {
+	var ids []string
+	result := r.DB.Raw(`
+          SELECT g.id
+          FROM guilds g
+          JOIN members m on m.guild_id = g."id"
+          where m.user_id = @userId
+          UNION
+          SELECT "User__friends"."id"
+          FROM "users" "User" LEFT JOIN "friends" "User_User__friends" ON "User_User__friends"."user_id"="User"."id" LEFT
+              JOIN "users" "User__friends" ON "User__friends"."id"="User_User__friends"."friend_id"
+          WHERE ( "User"."id" = @userId )
+	`, sql.Named("userId", userId)).Find(&ids)
+
+	return &ids, result.Error
+}
+
+func (r *userRepository) GetRequestCount(userId string) (*int64, error) {
+	var count int64
+	err := r.DB.
+		Table("users").
+		Joins("JOIN friend_requests fr ON users.id = fr.sender_id").
+		Where("fr.receiver_id = ?", userId).
+		Count(&count).
+		Error
+
+	return &count, err
 }
 
 func isDuplicateKeyError(err error) bool {

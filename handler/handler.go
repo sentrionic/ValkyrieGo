@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/sentrionic/valkyrie/handler/middleware"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
@@ -30,6 +31,7 @@ type Config struct {
 	MessageService  model.MessageService
 	TimeoutDuration time.Duration
 	MaxBodyBytes    int64
+	Redis           *redis.Client
 }
 
 // NewHandler initializes the handler with required injected services along with http routes

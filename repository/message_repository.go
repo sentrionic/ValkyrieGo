@@ -81,7 +81,7 @@ func (r *messageRepository) GetMessages(userId string, channel *model.Channel, c
 			  FROM users
 			   LEFT JOIN friends f ON users.id = f.user_id
 			  WHERE f.friend_id = messages.user_id
-				AND f.user_id = @userId) as "isFriend"
+				AND f.user_id = @userId) as is_friend
 		FROM messages
 		LEFT JOIN "users"
 		ON users.id = messages.user_id

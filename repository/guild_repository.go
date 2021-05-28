@@ -70,7 +70,7 @@ func (r *guildRepository) GuildMembers(userId string, guildId string) (*[]model.
 			LEFT JOIN friends f ON users.id = f."user_id"
 			WHERE f."friend_id" = u.id
 			AND f."user_id" = ?
-		) AS "isFriend"
+		) AS is_friend
 		FROM users AS u
 		JOIN members m ON u."id"::text = m."user_id"
 		WHERE m."guild_id" = ?

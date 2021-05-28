@@ -1,6 +1,11 @@
 package handler
 
-import "github.com/sentrionic/valkyrie/model"
+import (
+	"context"
+	"github.com/go-redis/redis/v8"
+	"github.com/sentrionic/valkyrie/model"
+	"log"
+)
 
 type Room struct {
 	id         string
@@ -8,21 +13,28 @@ type Room struct {
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan *model.WebsocketMessage
+	rds        *redis.Client
 }
 
+var ctx = context.Background()
+
 // NewRoom creates a new Room
-func NewRoom(id string) *Room {
+func NewRoom(id string, rds *redis.Client) *Room {
 	return &Room{
 		id:         id,
 		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan *model.WebsocketMessage),
+		rds:        rds,
 	}
 }
 
 // RunRoom runs our room, accepting various requests
 func (room *Room) RunRoom() {
+
+	go room.subscribeToRoomMessages()
+
 	for {
 		select {
 
@@ -33,7 +45,7 @@ func (room *Room) RunRoom() {
 			room.unregisterClientInRoom(client)
 
 		case message := <-room.broadcast:
-			room.broadcastToClientsInRoom(message.Encode())
+			room.publishRoomMessage(message.Encode())
 		}
 	}
 }
@@ -56,4 +68,22 @@ func (room *Room) broadcastToClientsInRoom(message []byte) {
 
 func (room *Room) GetId() string {
 	return room.id
+}
+
+func (room *Room) publishRoomMessage(message []byte) {
+	err := room.rds.Publish(ctx, room.GetId(), message).Err()
+
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func (room *Room) subscribeToRoomMessages() {
+	pubsub := room.rds.Subscribe(ctx, room.GetId())
+
+	ch := pubsub.Channel()
+
+	for msg := range ch {
+		room.broadcastToClientsInRoom([]byte(msg.Payload))
+	}
 }

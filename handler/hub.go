@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/go-redis/redis/v8"
 	"github.com/sentrionic/valkyrie/model"
 )
 
@@ -13,6 +14,7 @@ type WsServer struct {
 	channelService model.ChannelService
 	guildService   model.GuildService
 	userService    model.UserService
+	rds            *redis.Client
 }
 
 // NewWebsocketServer creates a new WsServer type
@@ -26,6 +28,7 @@ func NewWebsocketServer(c *Config) *WsServer {
 		channelService: c.ChannelService,
 		guildService:   c.GuildService,
 		userService:    c.UserService,
+		rds:            c.Redis,
 	}
 }
 
@@ -64,7 +67,7 @@ func (server *WsServer) broadcastToClients(message []byte) {
 
 func (server *WsServer) broadcastToRoom(message []byte, room string) {
 	if room := server.findRoomById(room); room != nil {
-		room.broadcastToClientsInRoom(message)
+		room.publishRoomMessage(message)
 	}
 }
 
@@ -81,7 +84,7 @@ func (server *WsServer) findRoomById(id string) *Room {
 }
 
 func (server *WsServer) createRoom(id string) *Room {
-	room := NewRoom(id)
+	room := NewRoom(id, server.rds)
 	go room.RunRoom()
 	server.rooms[room] = true
 

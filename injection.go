@@ -117,6 +117,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 		MessageService:  messageService,
 		TimeoutDuration: time.Duration(ht) * time.Second,
 		MaxBodyBytes:    mbb,
+		Redis:           d.RedisClient,
 	})
 
 	return router, nil

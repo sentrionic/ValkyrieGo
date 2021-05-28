@@ -177,31 +177,20 @@ func (client *Client) handleNewMessage(jsonMessage []byte) {
 
 	// Chat Typing Actions
 	case ws.StartTypingAction:
-		roomID := message.Room
-		if room := client.wsServer.findRoomById(roomID); room != nil {
-			msg := model.WebsocketMessage{
-				Action: ws.AddToTypingAction,
-				Data:   message.Message,
-			}
-			room.broadcast <- &msg
-		}
+		client.handleTypingEvent(message, ws.AddToTypingAction)
 
 	case ws.StopTypingAction:
-		roomID := message.Room
-		if room := client.wsServer.findRoomById(roomID); room != nil {
-			msg := model.WebsocketMessage{
-				Action: ws.RemoveFromTypingAction,
-				Data:   message.Message,
-			}
-			room.broadcast <- &msg
-		}
+		client.handleTypingEvent(message, ws.RemoveFromTypingAction)
 
 	// Online Status Actions
 	case ws.ToggleOnlineAction:
+		client.toggleOnlineStatus(true)
 	case ws.ToggleOfflineAction:
+		client.toggleOnlineStatus(false)
 
 	// Other
 	case ws.GetRequestCountAction:
+		client.handleGetRequestCount()
 	}
 }
 
@@ -264,4 +253,72 @@ func (client *Client) handleLeaveRoomMessage(message model.ReceivedMessage) {
 	}
 
 	room.unregister <- client
+}
+
+func (client *Client) handleGetRequestCount() {
+	if room := client.wsServer.findRoomById(client.ID); room != nil {
+		count, err := client.wsServer.userService.GetRequestCount(client.ID)
+
+		if err != nil {
+			return
+		}
+
+		msg := model.WebsocketMessage{
+			Action: ws.RequestCountEmission,
+			Data:   count,
+		}
+		room.broadcast <- &msg
+	}
+}
+
+func (client *Client) handleTypingEvent(message model.ReceivedMessage, action string) {
+	roomID := message.Room
+	if room := client.wsServer.findRoomById(roomID); room != nil {
+		msg := model.WebsocketMessage{
+			Action: action,
+			Data:   message.Message,
+		}
+		room.broadcast <- &msg
+	}
+}
+
+func (client *Client) toggleOnlineStatus(isOnline bool) {
+	uid := client.ID
+	us := client.wsServer.userService
+
+	user, err := us.Get(uid)
+
+	if err != nil {
+		log.Printf("could not find user: %v", err)
+		return
+	}
+
+	user.IsOnline = isOnline
+
+	if err := us.UpdateAccount(user); err != nil {
+		log.Printf("could not update user: %v", err)
+		return
+	}
+
+	ids, err := us.GetFriendAndGuildIds(uid)
+
+	if err != nil {
+		log.Printf("could not find ids: %v", err)
+		return
+	}
+
+	action := ws.ToggleOfflineEmission
+	if isOnline {
+		action = ws.ToggleOnlineEmission
+	}
+
+	for _, id := range *ids {
+		if room := client.wsServer.findRoomById(id); room != nil {
+			msg := model.WebsocketMessage{
+				Action: action,
+				Data:   uid,
+			}
+			room.broadcast <- &msg
+		}
+	}
 }

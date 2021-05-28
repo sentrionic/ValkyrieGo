@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	gonanoid "github.com/matoous/go-nanoid"
+	"github.com/sentrionic/valkyrie/handler/ws"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
@@ -136,9 +138,20 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		return
 	}
 
-	//TODO Add add_channel event
+	response := channel.SerializeChannel()
 
-	c.JSON(http.StatusCreated, channel.SerializeChannel())
+	data, err := json.Marshal(model.WebsocketMessage{
+		Action: ws.AddChannelAction,
+		Data:   response,
+	})
+
+	if err != nil {
+		log.Printf("error marshalling response: %v\n", err)
+	}
+
+	h.WsServer.broadcastToRoom(data, guildId)
+
+	c.JSON(http.StatusCreated, response)
 	return
 }
 
@@ -399,7 +412,16 @@ func (h *Handler) EditChannel(c *gin.Context) {
 		return
 	}
 
-	//TODO Add edit_channel event
+	data, err := json.Marshal(model.WebsocketMessage{
+		Action: ws.EditChannelAction,
+		Data:   channel.SerializeChannel(),
+	})
+
+	if err != nil {
+		log.Printf("error marshalling response: %v\n", err)
+	}
+
+	h.WsServer.broadcastToRoom(data, *channel.GuildID)
 
 	c.JSON(http.StatusCreated, true)
 	return
@@ -462,7 +484,16 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 		return
 	}
 
-	//TODO: Add delete_channel event
+	data, err := json.Marshal(model.WebsocketMessage{
+		Action: ws.DeleteChannelAction,
+		Data:   channelId,
+	})
+
+	if err != nil {
+		log.Printf("error marshalling response: %v\n", err)
+	}
+
+	h.WsServer.broadcastToRoom(data, *channel.GuildID)
 
 	if err := h.channelService.DeleteChannel(channel); err != nil {
 		log.Printf("Failed to delete channel: %v\n", err.Error())

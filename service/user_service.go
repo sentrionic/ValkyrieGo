@@ -184,6 +184,14 @@ func (s *userService) ResetPassword(ctx context.Context, password string, token 
 	return user, nil
 }
 
+func (s *userService) GetFriendAndGuildIds(userId string) (*[]string, error) {
+	return s.UserRepository.GetFriendAndGuildIds(userId)
+}
+
+func (s *userService) GetRequestCount(userId string) (*int64, error) {
+	return s.UserRepository.GetRequestCount(userId)
+}
+
 func getMD5Hash(email string) string {
 	hash := md5.Sum([]byte(email))
 	return hex.EncodeToString(hash[:])
