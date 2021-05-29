@@ -94,7 +94,12 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 			return
 		}
 
-		//TODO: Send add_request event
+		h.socketService.EmitAddFriendRequest(memberId, &model.FriendRequest{
+			Id:       authUser.ID,
+			Username: authUser.Username,
+			Image:    authUser.Image,
+			Type:     1,
+		})
 	}
 
 	c.JSON(http.StatusOK, true)
@@ -148,7 +153,7 @@ func (h *Handler) RemoveFriend(c *gin.Context) {
 			return
 		}
 
-		//TODO: Send remove_friend event
+		h.socketService.EmitRemoveFriend(userId, memberId)
 	}
 
 	c.JSON(http.StatusOK, true)
@@ -217,7 +222,7 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 			return
 		}
 
-		//TODO: Send add_friend event
+		h.socketService.EmitAddFriend(authUser, member)
 	}
 
 	c.JSON(http.StatusOK, true)

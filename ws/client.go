@@ -1,9 +1,8 @@
-package handler
+package ws
 
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/sentrionic/valkyrie/handler/ws"
 	"github.com/sentrionic/valkyrie/model"
 	"log"
 	"net/http"
@@ -40,20 +39,20 @@ var upgrader = websocket.Upgrader{
 // Client represents the websocket client at the server
 type Client struct {
 	// The actual websocket connection.
-	ID       string
-	conn     *websocket.Conn
-	wsServer *WsServer
-	send     chan []byte
-	rooms    map[*Room]bool
+	ID    string
+	conn  *websocket.Conn
+	hub   *Hub
+	send  chan []byte
+	rooms map[*Room]bool
 }
 
-func newClient(conn *websocket.Conn, wsServer *WsServer, id string) *Client {
+func newClient(conn *websocket.Conn, hub *Hub, id string) *Client {
 	return &Client{
-		ID:       id,
-		conn:     conn,
-		wsServer: wsServer,
-		send:     make(chan []byte, 256),
-		rooms:    make(map[*Room]bool),
+		ID:    id,
+		conn:  conn,
+		hub:   hub,
+		send:  make(chan []byte, 256),
+		rooms: make(map[*Room]bool),
 	}
 }
 
@@ -96,7 +95,7 @@ func (client *Client) writePump() {
 		case message, ok := <-client.send:
 			_ = client.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				// The WsServer closed the channel.
+				// The hub closed the channel.
 				_ = client.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -127,7 +126,7 @@ func (client *Client) writePump() {
 }
 
 func (client *Client) disconnect() {
-	client.wsServer.unregister <- client
+	client.hub.unregister <- client
 	for room := range client.rooms {
 		room.unregister <- client
 	}
@@ -136,7 +135,7 @@ func (client *Client) disconnect() {
 }
 
 // ServeWs handles websocket requests from clients requests.
-func ServeWs(wsServer *WsServer, ctx *gin.Context) {
+func ServeWs(hub *Hub, ctx *gin.Context) {
 
 	userId := ctx.MustGet("userId").(string)
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
@@ -145,12 +144,12 @@ func ServeWs(wsServer *WsServer, ctx *gin.Context) {
 		return
 	}
 
-	client := newClient(conn, wsServer, userId)
+	client := newClient(conn, hub, userId)
 
 	go client.writePump()
 	go client.readPump()
 
-	wsServer.register <- client
+	hub.register <- client
 }
 
 func (client *Client) handleNewMessage(jsonMessage []byte) {
@@ -162,34 +161,34 @@ func (client *Client) handleNewMessage(jsonMessage []byte) {
 
 	switch message.Action {
 	// Join Room Actions
-	case ws.JoinChannelAction:
+	case JoinChannelAction:
 		client.handleJoinChannelMessage(message)
-	case ws.JoinGuildAction:
+	case JoinGuildAction:
 		client.handleJoinGuildMessage(message)
-	case ws.JoinUserAction:
+	case JoinUserAction:
 		client.handleJoinRoomMessage(message)
 
 	// Leave Room Actions
-	case ws.LeaveRoomAction:
+	case LeaveRoomAction:
 		client.handleLeaveRoomMessage(message)
-	case ws.LeaveGuildAction:
+	case LeaveGuildAction:
 		client.handleLeaveGuildMessage(message)
 
 	// Chat Typing Actions
-	case ws.StartTypingAction:
-		client.handleTypingEvent(message, ws.AddToTypingAction)
+	case StartTypingAction:
+		client.handleTypingEvent(message, AddToTypingAction)
 
-	case ws.StopTypingAction:
-		client.handleTypingEvent(message, ws.RemoveFromTypingAction)
+	case StopTypingAction:
+		client.handleTypingEvent(message, RemoveFromTypingAction)
 
 	// Online Status Actions
-	case ws.ToggleOnlineAction:
+	case ToggleOnlineAction:
 		client.toggleOnlineStatus(true)
-	case ws.ToggleOfflineAction:
+	case ToggleOfflineAction:
 		client.toggleOnlineStatus(false)
 
 	// Other
-	case ws.GetRequestCountAction:
+	case GetRequestCountAction:
 		client.handleGetRequestCount()
 	}
 }
@@ -197,7 +196,7 @@ func (client *Client) handleNewMessage(jsonMessage []byte) {
 func (client *Client) handleJoinChannelMessage(message model.ReceivedMessage) {
 	roomName := message.Room
 
-	cs := client.wsServer.channelService
+	cs := client.hub.channelService
 	channel, err := cs.Get(roomName)
 
 	if err != nil {
@@ -214,7 +213,7 @@ func (client *Client) handleJoinChannelMessage(message model.ReceivedMessage) {
 func (client *Client) handleJoinGuildMessage(message model.ReceivedMessage) {
 	roomName := message.Room
 
-	gs := client.wsServer.guildService
+	gs := client.hub.guildService
 	guild, err := gs.GetGuild(roomName)
 
 	if err != nil {
@@ -231,9 +230,9 @@ func (client *Client) handleJoinGuildMessage(message model.ReceivedMessage) {
 func (client *Client) handleJoinRoomMessage(message model.ReceivedMessage) {
 	roomName := message.Room
 
-	room := client.wsServer.findRoomById(roomName)
+	room := client.hub.findRoomById(roomName)
 	if room == nil {
-		room = client.wsServer.createRoom(roomName)
+		room = client.hub.createRoom(roomName)
 	}
 
 	client.rooms[room] = true
@@ -242,12 +241,12 @@ func (client *Client) handleJoinRoomMessage(message model.ReceivedMessage) {
 }
 
 func (client *Client) handleLeaveGuildMessage(message model.ReceivedMessage) {
-	_ = client.wsServer.guildService.UpdateMemberLastSeen(client.ID, message.Room)
+	_ = client.hub.guildService.UpdateMemberLastSeen(client.ID, message.Room)
 	client.handleLeaveRoomMessage(message)
 }
 
 func (client *Client) handleLeaveRoomMessage(message model.ReceivedMessage) {
-	room := client.wsServer.findRoomById(message.Room)
+	room := client.hub.findRoomById(message.Room)
 	if _, ok := client.rooms[room]; ok {
 		delete(client.rooms, room)
 	}
@@ -256,15 +255,15 @@ func (client *Client) handleLeaveRoomMessage(message model.ReceivedMessage) {
 }
 
 func (client *Client) handleGetRequestCount() {
-	if room := client.wsServer.findRoomById(client.ID); room != nil {
-		count, err := client.wsServer.userService.GetRequestCount(client.ID)
+	if room := client.hub.findRoomById(client.ID); room != nil {
+		count, err := client.hub.userService.GetRequestCount(client.ID)
 
 		if err != nil {
 			return
 		}
 
 		msg := model.WebsocketMessage{
-			Action: ws.RequestCountEmission,
+			Action: RequestCountEmission,
 			Data:   count,
 		}
 		room.broadcast <- &msg
@@ -273,7 +272,7 @@ func (client *Client) handleGetRequestCount() {
 
 func (client *Client) handleTypingEvent(message model.ReceivedMessage, action string) {
 	roomID := message.Room
-	if room := client.wsServer.findRoomById(roomID); room != nil {
+	if room := client.hub.findRoomById(roomID); room != nil {
 		msg := model.WebsocketMessage{
 			Action: action,
 			Data:   message.Message,
@@ -284,7 +283,7 @@ func (client *Client) handleTypingEvent(message model.ReceivedMessage, action st
 
 func (client *Client) toggleOnlineStatus(isOnline bool) {
 	uid := client.ID
-	us := client.wsServer.userService
+	us := client.hub.userService
 
 	user, err := us.Get(uid)
 
@@ -307,13 +306,13 @@ func (client *Client) toggleOnlineStatus(isOnline bool) {
 		return
 	}
 
-	action := ws.ToggleOfflineEmission
+	action := ToggleOfflineEmission
 	if isOnline {
-		action = ws.ToggleOnlineEmission
+		action = ToggleOnlineEmission
 	}
 
 	for _, id := range *ids {
-		if room := client.wsServer.findRoomById(id); room != nil {
+		if room := client.hub.findRoomById(id); room != nil {
 			msg := model.WebsocketMessage{
 				Action: action,
 				Data:   uid,
@@ -321,4 +320,13 @@ func (client *Client) toggleOnlineStatus(isOnline bool) {
 			room.broadcast <- &msg
 		}
 	}
+}
+
+func isMember(guild *model.Guild, userId string) bool {
+	for _, v := range guild.Members {
+		if v.ID == userId {
+			return true
+		}
+	}
+	return false
 }

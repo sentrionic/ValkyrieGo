@@ -202,3 +202,11 @@ func (r *channelRepository) FindDMByUserAndChannelId(channelId, userId string) (
 		Scan(&id).Error
 	return id, err
 }
+
+func (r *channelRepository) GetDMMemberIds(channelId string) (*[]string, error) {
+	var members []string
+	err := r.DB.
+		Raw("SELECT u.id FROM users u JOIN dm_members dm on u.id = dm.user_id WHERE dm.channel_id = ?", channelId).
+		Scan(&members).Error
+	return &members, err
+}

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"github.com/sentrionic/valkyrie/handler/middleware"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
@@ -16,8 +15,8 @@ type Handler struct {
 	guildService   model.GuildService
 	channelService model.ChannelService
 	messageService model.MessageService
+	socketService  model.SocketService
 	MaxBodyBytes   int64
-	WsServer       *WsServer
 }
 
 // Config will hold services that will eventually be injected into this
@@ -29,22 +28,14 @@ type Config struct {
 	GuildService    model.GuildService
 	ChannelService  model.ChannelService
 	MessageService  model.MessageService
+	SocketService   model.SocketService
 	TimeoutDuration time.Duration
 	MaxBodyBytes    int64
-	Redis           *redis.Client
 }
 
 // NewHandler initializes the handler with required injected services along with http routes
 // Does not return as it deals directly with a reference to the gin Engine
 func NewHandler(c *Config) {
-
-	// Websocket Setup
-	wsServer := NewWebsocketServer(c)
-	go wsServer.Run()
-
-	c.R.GET("/ws", middleware.AuthUser(), func(c *gin.Context) {
-		ServeWs(wsServer, c)
-	})
 
 	// Create a handler (which will later have injected services)
 	h := &Handler{
@@ -53,8 +44,8 @@ func NewHandler(c *Config) {
 		guildService:   c.GuildService,
 		channelService: c.ChannelService,
 		messageService: c.MessageService,
+		socketService:  c.SocketService,
 		MaxBodyBytes:   c.MaxBodyBytes,
-		WsServer:       wsServer,
 	}
 
 	c.R.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))

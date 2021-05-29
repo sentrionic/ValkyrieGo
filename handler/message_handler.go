@@ -1,10 +1,8 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/sentrionic/valkyrie/handler/ws"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
@@ -158,26 +156,17 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		response.User.Color = settings.Color
 	}
 
-	data, err := json.Marshal(model.WebsocketMessage{
-		Action: ws.NewMessageAction,
-		Data:   response,
-	})
-
-	if err != nil {
-		log.Printf("error marshalling response: %v\n", err)
-	}
-
-	h.WsServer.broadcastToRoom(data, channelId)
+	h.socketService.EmitNewMessage(channelId, &response)
 
 	if channel.IsDM {
 		// Open the DM and push it to the top
 		_ = h.channelService.OpenDMForAll(channelId)
-		//TODO: Emit new_dm_notification event
+		h.socketService.EmitNewDMNotification(channelId, author)
 	} else {
 		// Update last activity in channel
 		channel.LastActivity = time.Now()
 		_ = h.channelService.UpdateChannel(channel)
-		//TODO: Emit new_notification event
+		h.socketService.EmitNewNotification(*channel.GuildID, channelId)
 	}
 
 	c.JSON(http.StatusOK, true)
@@ -220,7 +209,17 @@ func (h *Handler) EditMessage(c *gin.Context) {
 		return
 	}
 
-	//TODO: Emit edit_message event
+	response := model.MessageResponse{
+		Id:         message.ID,
+		Text:       message.Text,
+		CreatedAt:  message.CreatedAt,
+		UpdatedAt:  message.UpdatedAt,
+		Attachment: message.Attachment,
+		User: model.MemberResponse{
+			Id: userId,
+		},
+	}
+	h.socketService.EmitEditMessage(message.ChannelId, &response)
 
 	c.JSON(http.StatusOK, true)
 }
@@ -262,9 +261,9 @@ func (h *Handler) DeleteMessage(c *gin.Context) {
 			return
 		}
 
-		if message.UserId != userId || guild.OwnerId != userId {
+		if message.UserId != userId && guild.OwnerId != userId {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Only the author can delete the message",
+				"error": "Only the author or owner can delete the message",
 			})
 			return
 		}
@@ -285,7 +284,7 @@ func (h *Handler) DeleteMessage(c *gin.Context) {
 		return
 	}
 
-	//TODO: Emit delete_message event
+	h.socketService.EmitDeleteMessage(message.ChannelId, message.ID)
 
 	c.JSON(http.StatusOK, true)
 }

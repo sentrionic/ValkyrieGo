@@ -7,8 +7,10 @@ import (
 	"github.com/gin-gonic/gin"
 	cors "github.com/rs/cors/wrapper/gin"
 	"github.com/sentrionic/valkyrie/handler"
+	"github.com/sentrionic/valkyrie/handler/middleware"
 	"github.com/sentrionic/valkyrie/repository"
 	"github.com/sentrionic/valkyrie/service"
+	"github.com/sentrionic/valkyrie/ws"
 	"log"
 	"net/http"
 	"os"
@@ -108,6 +110,25 @@ func inject(d *dataSources) (*gin.Engine, error) {
 		return nil, fmt.Errorf("could not parse MAX_BODY_BYTES as int: %w", err)
 	}
 
+	// Websocket Setup
+	hub := ws.NewWebsocketHub(&ws.Config{
+		UserService:    userService,
+		GuildService:   guildService,
+		ChannelService: channelService,
+		Redis:          d.RedisClient,
+	})
+	go hub.Run()
+
+	router.GET("/ws", middleware.AuthUser(), func(c *gin.Context) {
+		ws.ServeWs(hub, c)
+	})
+
+	socketService := service.NewSocketService(&service.SSConfig{
+		Hub:               *hub,
+		GuildRepository:   guildRepository,
+		ChannelRepository: channelRepository,
+	})
+
 	handler.NewHandler(&handler.Config{
 		R:               router,
 		UserService:     userService,
@@ -115,9 +136,9 @@ func inject(d *dataSources) (*gin.Engine, error) {
 		GuildService:    guildService,
 		ChannelService:  channelService,
 		MessageService:  messageService,
+		SocketService:   socketService,
 		TimeoutDuration: time.Duration(ht) * time.Second,
 		MaxBodyBytes:    mbb,
-		Redis:           d.RedisClient,
 	})
 
 	return router, nil

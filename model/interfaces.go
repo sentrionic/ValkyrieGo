@@ -117,6 +117,7 @@ type GuildRepository interface {
 	FindUsersByIds(ids []string, guildId string) (*[]User, error)
 	GetMember(userId, guildId string) (*User, error)
 	UpdateMemberLastSeen(userId, guildId string) error
+	GetMemberIds(guildId string) (*[]string, error)
 }
 
 type ChannelRepository interface {
@@ -136,6 +137,7 @@ type ChannelRepository interface {
 	RemovePrivateChannelMembers(memberIds []string, channelId string) error
 	FindDMByUserAndChannelId(channelId, userId string) (string, error)
 	OpenDMForAll(dmId string) error
+	GetDMMemberIds(channelId string) (*[]string, error)
 }
 
 type FileRepository interface {
@@ -162,4 +164,29 @@ type MessageRepository interface {
 	UpdateMessage(message *Message) error
 	DeleteMessage(message *Message) error
 	GetById(messageId string) (*Message, error)
+}
+
+type SocketService interface {
+	EmitNewMessage(room string, message *MessageResponse)
+	EmitEditMessage(room string, message *MessageResponse)
+	EmitDeleteMessage(room, messageId string)
+
+	EmitNewChannel(room string, channel *ChannelResponse)
+	EmitEditChannel(room string, channel *ChannelResponse)
+	EmitDeleteChannel(channel *Channel)
+
+	EmitEditGuild(guild *Guild)
+	EmitDeleteGuild(guildId string, members []string)
+	EmitRemoveFromGuild(memberId, guildId string)
+
+	EmitAddMember(room string, member *User)
+	EmitRemoveMember(room, memberId string)
+
+	EmitNewDMNotification(channelId string, user *User)
+	EmitNewNotification(guildId, channelId string)
+
+	EmitSendRequest(room string)
+	EmitAddFriendRequest(room string, request *FriendRequest)
+	EmitAddFriend(user, member *User)
+	EmitRemoveFriend(userId, memberId string)
 }

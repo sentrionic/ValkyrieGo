@@ -157,7 +157,6 @@ func (h *Handler) EditGuild(c *gin.Context) {
 
 	guild.Name = req.Name
 
-	//TODO: Change frontend/app to use icon instead of image for existing icons
 	if req.Image != nil {
 		// Validate image mime-type is allowable
 		mimeType := req.Image.Header.Get("Content-Type")
@@ -200,7 +199,7 @@ func (h *Handler) EditGuild(c *gin.Context) {
 		return
 	}
 
-	//TODO: Send edit_guild event
+	h.socketService.EmitEditGuild(guild)
 
 	c.JSON(http.StatusCreated, true)
 	return
@@ -382,7 +381,7 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 		return
 	}
 
-	// TODO: Send add_member event
+	h.socketService.EmitAddMember(guild.ID, authUser)
 
 	channel, _ := h.guildService.GetDefaultChannel(guildId)
 
@@ -420,7 +419,7 @@ func (h *Handler) LeaveGuild(c *gin.Context) {
 		return
 	}
 
-	// TODO: Send remove_member event
+	h.socketService.EmitRemoveMember(guild.ID, userId)
 
 	c.JSON(http.StatusOK, true)
 }
@@ -447,6 +446,11 @@ func (h *Handler) DeleteGuild(c *gin.Context) {
 		return
 	}
 
+	members := make([]string, 0)
+	for _, member := range guild.Members {
+		members = append(members, member.ID)
+	}
+
 	if err := h.guildService.DeleteGuild(guildId); err != nil {
 		log.Printf("Failed to leave guild: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
@@ -455,7 +459,7 @@ func (h *Handler) DeleteGuild(c *gin.Context) {
 		return
 	}
 
-	// TODO: Send delete_guild event
+	h.socketService.EmitDeleteGuild(guildId, members)
 
 	c.JSON(http.StatusOK, true)
 }

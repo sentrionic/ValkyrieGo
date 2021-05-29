@@ -1,4 +1,4 @@
-package handler
+package ws
 
 import (
 	"context"
@@ -13,7 +13,7 @@ type Room struct {
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan *model.WebsocketMessage
-	rds        *redis.Client
+	redis      *redis.Client
 }
 
 var ctx = context.Background()
@@ -26,7 +26,7 @@ func NewRoom(id string, rds *redis.Client) *Room {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan *model.WebsocketMessage),
-		rds:        rds,
+		redis:      rds,
 	}
 }
 
@@ -71,7 +71,7 @@ func (room *Room) GetId() string {
 }
 
 func (room *Room) publishRoomMessage(message []byte) {
-	err := room.rds.Publish(ctx, room.GetId(), message).Err()
+	err := room.redis.Publish(ctx, room.GetId(), message).Err()
 
 	if err != nil {
 		log.Println(err)
@@ -79,7 +79,7 @@ func (room *Room) publishRoomMessage(message []byte) {
 }
 
 func (room *Room) subscribeToRoomMessages() {
-	pubsub := room.rds.Subscribe(ctx, room.GetId())
+	pubsub := room.redis.Subscribe(ctx, room.GetId())
 
 	ch := pubsub.Channel()
 

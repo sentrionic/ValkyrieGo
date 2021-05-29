@@ -216,3 +216,15 @@ func (r *guildRepository) UpdateMemberLastSeen(userId, guildId string) error {
 		Error
 	return err
 }
+
+func (r *guildRepository) GetMemberIds(guildId string) (*[]string, error) {
+	var users []string
+	result := r.DB.Raw(`
+		SELECT u.id
+		FROM users AS u
+		JOIN members m ON u."id"::text = m."user_id"
+		WHERE m."guild_id" = ?
+	`, guildId).Find(&users)
+
+	return &users, result.Error
+}

@@ -22,6 +22,8 @@ const (
 	AddChannelAction        = "add_channel"
 	EditChannelAction       = "edit_channel"
 	DeleteChannelAction     = "delete_channel"
+	EditGuildAction         = "edit_guild"
+	DeleteGuildAction       = "delete_guild"
 	RemoveFromGuildAction   = "remove_from_guild"
 	AddMemberAction         = "add_member"
 	RemoveMemberAction      = "remove_member"

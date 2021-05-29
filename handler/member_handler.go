@@ -198,6 +198,9 @@ func (h *Handler) BanMember(c *gin.Context) {
 		return
 	}
 
+	h.socketService.EmitRemoveMember(guild.ID, member.ID)
+	h.socketService.EmitRemoveFromGuild(member.ID, guildId)
+
 	c.JSON(http.StatusOK, true)
 }
 
@@ -305,6 +308,9 @@ func (h *Handler) KickMember(c *gin.Context) {
 		})
 		return
 	}
+
+	h.socketService.EmitRemoveMember(guild.ID, member.ID)
+	h.socketService.EmitRemoveFromGuild(member.ID, guildId)
 
 	c.JSON(http.StatusOK, true)
 }
