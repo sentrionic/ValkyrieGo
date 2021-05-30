@@ -2,6 +2,10 @@ package model
 
 import "time"
 
+// Channel represents a text channel in a guild
+// or a text channel for DMs between users.
+// GuildID should only be nil if it is a DM channel
+// PCMembers should only be used if the channel is private.
 type Channel struct {
 	BaseModel
 	GuildID      *string
@@ -13,6 +17,7 @@ type Channel struct {
 	Messages     []Message `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
+// ChannelResponse is the JSON response of the channel
 type ChannelResponse struct {
 	Id              string    `json:"id"`
 	Name            string    `json:"name"`

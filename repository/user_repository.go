@@ -23,6 +23,7 @@ func NewUserRepository(db *gorm.DB) model.UserRepository {
 	}
 }
 
+// FindByID returns a user for the given ID
 func (r *userRepository) FindByID(id string) (*model.User, error) {
 	user := &model.User{}
 
@@ -37,15 +38,16 @@ func (r *userRepository) FindByID(id string) (*model.User, error) {
 	return user, nil
 }
 
-func (r *userRepository) Create(u *model.User) error {
-	if result := r.DB.Create(&u); result.Error != nil {
+// Create inserts the user in the DB
+func (r *userRepository) Create(user *model.User) error {
+	if result := r.DB.Create(&user); result.Error != nil {
 		// check unique constraint
 		if isDuplicateKeyError(result.Error) {
-			log.Printf("Could not create a user with email: %v. Reason: %v\n", u.Email, result.Error)
-			return apperrors.NewConflict("email", u.Email)
+			log.Printf("Could not create a user with email: %v. Reason: %v\n", user.Email, result.Error)
+			return apperrors.NewConflict("email", user.Email)
 		}
 
-		log.Printf("Could not create a user with email: %v. Reason: %v\n", u.Email, result.Error)
+		log.Printf("Could not create a user with email: %v. Reason: %v\n", user.Email, result.Error)
 		return apperrors.NewInternal()
 	}
 	return nil
@@ -66,11 +68,13 @@ func (r *userRepository) FindByEmail(email string) (*model.User, error) {
 	return user, nil
 }
 
-func (r *userRepository) Update(u *model.User) error {
-	result := r.DB.Save(&u)
+// Update updates the user in the DB
+func (r *userRepository) Update(user *model.User) error {
+	result := r.DB.Save(&user)
 	return result.Error
 }
 
+// GetFriendAndGuildIds returns the id of the users friends and the guilds they are part of
 func (r *userRepository) GetFriendAndGuildIds(userId string) (*[]string, error) {
 	var ids []string
 	result := r.DB.Raw(`
@@ -88,6 +92,7 @@ func (r *userRepository) GetFriendAndGuildIds(userId string) (*[]string, error) 
 	return &ids, result.Error
 }
 
+// GetRequestCount returns the amount of incoming friend requests the current user currently has
 func (r *userRepository) GetRequestCount(userId string) (*int64, error) {
 	var count int64
 	err := r.DB.
@@ -100,6 +105,7 @@ func (r *userRepository) GetRequestCount(userId string) (*int64, error) {
 	return &count, err
 }
 
+// isDuplicateKeyError checks if the provided error is a PostgreSQL duplicate key error
 func isDuplicateKeyError(err error) bool {
 	duplicate := regexp.MustCompile(`\(SQLSTATE 23505\)$`)
 	return duplicate.MatchString(err.Error())

@@ -17,12 +17,13 @@ import (
 	"mime/multipart"
 )
 
+// s3FileRepository includes the S3 session and the BucketName
 type s3FileRepository struct {
 	S3Session  *session.Session
 	BucketName string
 }
 
-// NewFileRepository is a factory for initializing User Repositories
+// NewFileRepository is a factory for initializing the FileRepository
 func NewFileRepository(session *session.Session, bucketName string) model.FileRepository {
 	return &s3FileRepository{
 		S3Session:  session,
@@ -30,6 +31,10 @@ func NewFileRepository(session *session.Session, bucketName string) model.FileRe
 	}
 }
 
+// UploadAvatar uploads the given image to the initialized Bucket.
+// The image gets resized before being uploaded.
+// All images turn into jpeg images.
+// It returns the url of the uploaded file.
 func (s *s3FileRepository) UploadAvatar(header *multipart.FileHeader, directory string) (string, error) {
 	uploader := s3manager.NewUploader(s.S3Session)
 
@@ -75,6 +80,8 @@ func (s *s3FileRepository) UploadAvatar(header *multipart.FileHeader, directory 
 	return up.Location, nil
 }
 
+// UploadFile uploads the given file to the initialized Bucket.
+// It returns the url of the uploaded file.
 func (s *s3FileRepository) UploadFile(header *multipart.FileHeader, directory, filename, mimetype string) (string, error) {
 	uploader := s3manager.NewUploader(s.S3Session)
 
@@ -104,6 +111,7 @@ func (s *s3FileRepository) UploadFile(header *multipart.FileHeader, directory, f
 	return up.Location, nil
 }
 
+// DeleteImage deletes the file from the Bucket.
 func (s *s3FileRepository) DeleteImage(key string) error {
 	srv := s3.New(s.S3Session)
 	_, err := srv.DeleteObject(&s3.DeleteObjectInput{

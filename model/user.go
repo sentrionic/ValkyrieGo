@@ -1,5 +1,6 @@
 package model
 
+// User represents the user of the website.
 type User struct {
 	BaseModel
 	Username string    `gorm:"not null" json:"username"`

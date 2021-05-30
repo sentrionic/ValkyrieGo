@@ -21,7 +21,8 @@ func NewMessageRepository(db *gorm.DB) model.MessageRepository {
 	}
 }
 
-type MessageQuery struct {
+// messageQuery represents the fetched fields for GetMessages
+type messageQuery struct {
 	Id            string
 	Text          *string
 	CreatedAt     time.Time
@@ -41,12 +42,16 @@ type MessageQuery struct {
 	IsFriend      bool
 }
 
+// GetMessages returns the 35 most recent messages for the given channel.
+// If a cursor is specified it returns the 35 messages after the cursor.
 func (r *messageRepository) GetMessages(userId string, channel *model.Channel, cursor string) (*[]model.MessageResponse, error) {
-	var result []MessageQuery
+	var result []messageQuery
 
 	memberSelect := ""
 	memberJoin := ""
 	memberWhere := ""
+
+	// If the channel is not a DM channel, also fetch the message author's settings
 	if !channel.IsDM {
 		memberSelect = "member.nickname, member.color,"
 		memberJoin = "LEFT JOIN members member on messages.user_id = member.user_id"
@@ -55,6 +60,7 @@ func (r *messageRepository) GetMessages(userId string, channel *model.Channel, c
 
 	crs := ""
 	if cursor != "" {
+		// Remove the timezone from the string since it's stored differently in the DB
 		date := cursor[:len(cursor)-6]
 		crs = fmt.Sprintf("AND messages.created_at < '%s'", date)
 	}
@@ -100,6 +106,7 @@ func (r *messageRepository) GetMessages(userId string, channel *model.Channel, c
 
 	var messages []model.MessageResponse
 
+	// Turn messageQuery results into MessageResponse
 	for _, m := range result {
 
 		var attachment *model.Attachment = nil
@@ -135,18 +142,22 @@ func (r *messageRepository) GetMessages(userId string, channel *model.Channel, c
 	return &messages, err
 }
 
+// CreateMessage inserts the message in the DB
 func (r *messageRepository) CreateMessage(message *model.Message) error {
 	return r.DB.Create(&message).Error
 }
 
+// UpdateMessage updates the message in the DB
 func (r *messageRepository) UpdateMessage(message *model.Message) error {
 	return r.DB.Save(&message).Error
 }
 
+// DeleteMessage removes the message from the DB
 func (r *messageRepository) DeleteMessage(message *model.Message) error {
 	return r.DB.Delete(message).Error
 }
 
+// GetById fetches the message for the given id
 func (r *messageRepository) GetById(messageId string) (*model.Message, error) {
 	var message model.Message
 	err := r.DB.Where("id = ?", messageId).First(&message).Error

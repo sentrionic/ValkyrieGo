@@ -96,7 +96,7 @@ func NewHandler(c *Config) {
 	cg := c.R.Group("api/channels")
 	cg.Use(middleware.AuthUser())
 
-	//Route parameters cause conflicts so they have to use the same parameter name
+	// Route parameters cause conflicts so they have to use the same parameter name
 	cg.GET("/:id", h.GuildChannels)                 // id -> guildId
 	cg.POST("/:id", h.CreateChannel)                // id -> guildId
 	cg.GET("/:id/members", h.PrivateChannelMembers) // id -> channelId

@@ -5,6 +5,7 @@ import (
 	"github.com/bwmarrin/snowflake"
 )
 
+// GenerateId generates a snowflake id
 func GenerateId() (string, error) {
 	node, err := snowflake.NewNode(1)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"github.com/sentrionic/valkyrie/model/apperrors"
 )
 
-// channelService acts as a struct for injecting an implementation of UserRepository
+// channelService acts as a struct for injecting an implementation of ChannelRepository
 // for use in service methods
 type channelService struct {
 	ChannelRepository model.ChannelRepository
@@ -20,7 +20,7 @@ type CSConfig struct {
 }
 
 // NewChannelService is a factory function for
-// initializing a UserService with its repository layer dependencies
+// initializing a ChannelService with its repository layer dependencies
 func NewChannelService(c *CSConfig) model.ChannelService {
 	return &channelService{
 		ChannelRepository: c.ChannelRepository,

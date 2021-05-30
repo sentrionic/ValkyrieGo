@@ -32,6 +32,7 @@ func initDS() (*dataSources, error) {
 		return nil, fmt.Errorf("error opening db: %w", err)
 	}
 
+	// Migrate models and setup join tables
 	if err := db.AutoMigrate(
 		&model.User{},
 		&model.Guild{},

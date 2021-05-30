@@ -177,7 +177,6 @@ func (client *Client) handleNewMessage(jsonMessage []byte) {
 	// Chat Typing Actions
 	case StartTypingAction:
 		client.handleTypingEvent(message, AddToTypingAction)
-
 	case StopTypingAction:
 		client.handleTypingEvent(message, RemoveFromTypingAction)
 
@@ -193,6 +192,7 @@ func (client *Client) handleNewMessage(jsonMessage []byte) {
 	}
 }
 
+// handleJoinChannelMessage joins the given room if the user is a member in it
 func (client *Client) handleJoinChannelMessage(message model.ReceivedMessage) {
 	roomName := message.Room
 
@@ -203,6 +203,7 @@ func (client *Client) handleJoinChannelMessage(message model.ReceivedMessage) {
 		return
 	}
 
+	// Check if the user has access to the given channel
 	if err = cs.IsChannelMember(channel, client.ID); err != nil {
 		return
 	}
@@ -210,6 +211,7 @@ func (client *Client) handleJoinChannelMessage(message model.ReceivedMessage) {
 	client.handleJoinRoomMessage(message)
 }
 
+// handleJoinGuildMessage joins the given guild if the user is member in it
 func (client *Client) handleJoinGuildMessage(message model.ReceivedMessage) {
 	roomName := message.Room
 
@@ -220,6 +222,7 @@ func (client *Client) handleJoinGuildMessage(message model.ReceivedMessage) {
 		return
 	}
 
+	// Check if the user is member of the given guild
 	if !isMember(guild, client.ID) {
 		return
 	}
@@ -227,6 +230,7 @@ func (client *Client) handleJoinGuildMessage(message model.ReceivedMessage) {
 	client.handleJoinRoomMessage(message)
 }
 
+// handleJoinRoomMessage joins the given room
 func (client *Client) handleJoinRoomMessage(message model.ReceivedMessage) {
 	roomName := message.Room
 
@@ -240,20 +244,25 @@ func (client *Client) handleJoinRoomMessage(message model.ReceivedMessage) {
 	room.register <- client
 }
 
+// handleLeaveGuildMessage leaves the room and updates the members last seen date
 func (client *Client) handleLeaveGuildMessage(message model.ReceivedMessage) {
 	_ = client.hub.guildService.UpdateMemberLastSeen(client.ID, message.Room)
 	client.handleLeaveRoomMessage(message)
 }
 
+// handleLeaveRoomMessage leaves the room
 func (client *Client) handleLeaveRoomMessage(message model.ReceivedMessage) {
 	room := client.hub.findRoomById(message.Room)
 	if _, ok := client.rooms[room]; ok {
 		delete(client.rooms, room)
 	}
 
-	room.unregister <- client
+	if room != nil {
+		room.unregister <- client
+	}
 }
 
+// handleGetRequestCount returns the users incoming friend request count
 func (client *Client) handleGetRequestCount() {
 	if room := client.hub.findRoomById(client.ID); room != nil {
 		count, err := client.hub.userService.GetRequestCount(client.ID)
@@ -270,6 +279,7 @@ func (client *Client) handleGetRequestCount() {
 	}
 }
 
+// handleTypingEvent emits the username of the currently typing user to the room
 func (client *Client) handleTypingEvent(message model.ReceivedMessage, action string) {
 	roomID := message.Room
 	if room := client.hub.findRoomById(roomID); room != nil {
@@ -281,6 +291,8 @@ func (client *Client) handleTypingEvent(message model.ReceivedMessage, action st
 	}
 }
 
+// toggleOnlineStatus updates the users online status and emits it to all
+// guilds the user is a member of and all of their friends
 func (client *Client) toggleOnlineStatus(isOnline bool) {
 	uid := client.ID
 	us := client.hub.userService
@@ -322,6 +334,7 @@ func (client *Client) toggleOnlineStatus(isOnline bool) {
 	}
 }
 
+// isMember checks if the user is member of the given guild
 func isMember(guild *model.Guild, userId string) bool {
 	for _, v := range guild.Members {
 		if v.ID == userId {

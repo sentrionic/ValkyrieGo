@@ -10,14 +10,14 @@ import (
 type UserService interface {
 	Get(id string) (*User, error)
 	GetByEmail(email string) (*User, error)
-	Register(u *User) error
-	Login(u *User) error
-	UpdateAccount(u *User) error
-	CheckEmail(email string) bool
+	Register(user *User) error
+	Login(user *User) error
+	UpdateAccount(user *User) error
+	IsEmailAlreadyInUse(email string) bool
 	ChangeAvatar(header *multipart.FileHeader, directory string) (string, error)
 	DeleteImage(key string) error
-	ChangePassword(password string, u *User) error
-	ForgotPassword(ctx context.Context, u *User) error
+	ChangePassword(password string, user *User) error
+	ForgotPassword(ctx context.Context, user *User) error
 	ResetPassword(ctx context.Context, password string, token string) (*User, error)
 	GetFriendAndGuildIds(userId string) (*[]string, error)
 	GetRequestCount(userId string) (*int64, error)
@@ -37,9 +37,9 @@ type GuildService interface {
 	GetGuild(id string) (*Guild, error)
 	GetUserGuilds(uid string) (*[]GuildResponse, error)
 	GetGuildMembers(userId string, guildId string) (*[]MemberResponse, error)
-	CreateGuild(g *Guild) error
+	CreateGuild(guild *Guild) error
 	GenerateInviteLink(ctx context.Context, guildId string, isPermanent bool) (string, error)
-	UpdateGuild(g *Guild) error
+	UpdateGuild(guild *Guild) error
 	GetGuildIdFromInvite(ctx context.Context, token string) (string, error)
 	GetDefaultChannel(guildId string) (*Channel, error)
 	InvalidateInvites(ctx context.Context, guild *Guild)
@@ -85,9 +85,9 @@ type MessageService interface {
 // any repository it interacts with to implement
 type UserRepository interface {
 	FindByID(id string) (*User, error)
-	Create(u *User) error
+	Create(user *User) error
 	FindByEmail(email string) (*User, error)
-	Update(u *User) error
+	Update(user *User) error
 	GetFriendAndGuildIds(userId string) (*[]string, error)
 	GetRequestCount(userId string) (*int64, error)
 }
@@ -106,8 +106,8 @@ type GuildRepository interface {
 	FindByID(id string) (*Guild, error)
 	List(uid string) (*[]GuildResponse, error)
 	GuildMembers(userId string, guildId string) (*[]MemberResponse, error)
-	Create(g *Guild) error
-	Save(g *Guild) error
+	Create(guild *Guild) error
+	Save(guild *Guild) error
 	RemoveMember(userId string, guildId string) error
 	Delete(guildId string) error
 	UnbanMember(userId string, guildId string) error
@@ -121,7 +121,7 @@ type GuildRepository interface {
 }
 
 type ChannelRepository interface {
-	Create(c *Channel) error
+	Create(channel *Channel) error
 	GetGuildDefault(guildId string) (*Channel, error)
 	Get(userId string, guildId string) (*[]ChannelResponse, error)
 	GetDirectMessages(userId string) (*[]DirectMessage, error)
@@ -147,7 +147,7 @@ type FileRepository interface {
 }
 
 type MailRepository interface {
-	SendMail(email string, html string) error
+	SendResetMail(email string, html string) error
 }
 
 type RedisRepository interface {

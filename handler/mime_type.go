@@ -20,8 +20,8 @@ var validFileTypes = map[string]bool{
 	"audio/wave": true,
 }
 
-// IsAllowedImageType determines if image is among types defined
-// in map of allowed images
+// isAllowedFileType determines if the file is among types defined
+// in map of allowed file types
 func isAllowedFileType(mimeType string) bool {
 	_, exists := validFileTypes[mimeType]
 

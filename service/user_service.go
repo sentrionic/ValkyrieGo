@@ -9,6 +9,7 @@ import (
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
 	"mime/multipart"
+	"strings"
 )
 
 // UserService acts as a struct for injecting an implementation of UserRepository
@@ -40,7 +41,7 @@ func NewUserService(c *USConfig) model.UserService {
 	}
 }
 
-// Get retrieves a user based on their uuid
+// Get retrieves a user based on their uid
 func (s *userService) Get(uid string) (*model.User, error) {
 	u, err := s.UserRepository.FindByID(uid)
 
@@ -49,11 +50,16 @@ func (s *userService) Get(uid string) (*model.User, error) {
 
 // GetByEmail retrieves a user based on their email
 func (s *userService) GetByEmail(email string) (*model.User, error) {
+
+	// Sanitize email
+	email = strings.ToLower(email)
+	email = strings.TrimSpace(email)
 	u, err := s.UserRepository.FindByEmail(email)
 
 	return u, err
 }
 
+// Register creates a user
 func (s *userService) Register(u *model.User) error {
 	pw, err := hashPassword(u.Password)
 
@@ -62,7 +68,11 @@ func (s *userService) Register(u *model.User) error {
 		return apperrors.NewInternal()
 	}
 
+	// Sanitize fields
 	u.Password = pw
+	u.Username = strings.TrimSpace(u.Username)
+	u.Email = strings.TrimSpace(u.Email)
+	u.Email = strings.ToLower(u.Email)
 
 	id, _ := GenerateId()
 	u.ID = id
@@ -103,7 +113,6 @@ func (s *userService) Login(u *model.User) error {
 }
 
 func (s *userService) UpdateAccount(u *model.User) error {
-	// Update user in UserRepository
 	err := s.UserRepository.Update(u)
 
 	if err != nil {
@@ -113,7 +122,7 @@ func (s *userService) UpdateAccount(u *model.User) error {
 	return nil
 }
 
-func (s *userService) CheckEmail(email string) bool {
+func (s *userService) IsEmailAlreadyInUse(email string) bool {
 	user, _ := s.UserRepository.FindByEmail(email)
 	return user.ID != ""
 }
@@ -150,7 +159,7 @@ func (s *userService) ForgotPassword(ctx context.Context, user *model.User) erro
 		return err
 	}
 
-	err = s.MailRepository.SendMail(user.Email, token)
+	err = s.MailRepository.SendResetMail(user.Email, token)
 
 	return err
 }
@@ -192,6 +201,7 @@ func (s *userService) GetRequestCount(userId string) (*int64, error) {
 	return s.UserRepository.GetRequestCount(userId)
 }
 
+// getMD5Hash returns the MD5 hash as a string for the given input
 func getMD5Hash(email string) string {
 	hash := md5.Sum([]byte(email))
 	return hex.EncodeToString(hash[:])

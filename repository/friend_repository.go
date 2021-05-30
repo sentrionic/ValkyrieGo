@@ -14,27 +14,29 @@ type friendRepository struct {
 	DB *gorm.DB
 }
 
-// NewFriendRepository is a factory for initializing User Repositories
+// NewFriendRepository is a factory for initializing Friend Repositories
 func NewFriendRepository(db *gorm.DB) model.FriendRepository {
 	return &friendRepository{
 		DB: db,
 	}
 }
 
+// FriendsList returns the friends for the given user ID from the DB
 func (r *friendRepository) FriendsList(id string) (*[]model.Friend, error) {
-	var u []model.Friend
+	var friends []model.Friend
 
 	result := r.DB.
 		Table("users").
 		Joins(`JOIN friends ON friends.user_id = "users".id`).
 		Where("friends.friend_id = ?", id).
-		Find(&u)
+		Find(&friends)
 
-	return &u, result.Error
+	return &friends, result.Error
 }
 
+// RequestList returns the friend requests for the given user ID from the DB
 func (r *friendRepository) RequestList(id string) (*[]model.FriendRequest, error) {
-	var fr []model.FriendRequest
+	var requests []model.FriendRequest
 
 	result := r.DB.
 		Raw(`
@@ -46,15 +48,16 @@ func (r *friendRepository) RequestList(id string) (*[]model.FriendRequest, error
 		  join friend_requests fr on u.id = fr."receiver_id"
 		  where fr."sender_id" = @id
 		  order by username;
-		`, sql.Named("id", id)).Find(&fr)
+		`, sql.Named("id", id)).
+		Find(&requests)
 
-	return &fr, result.Error
+	return &requests, result.Error
 }
 
+// FindByID returns a User containing their friends and requests from the DB
 func (r *friendRepository) FindByID(id string) (*model.User, error) {
 	user := &model.User{}
 
-	// we need to actually check errors as it could be something other than not found
 	if err := r.DB.
 		Preload("Friends").
 		Preload("Requests").
@@ -69,16 +72,20 @@ func (r *friendRepository) FindByID(id string) (*model.User, error) {
 	return user, nil
 }
 
+// DeleteRequest removes the given member and user from the friend requests
 func (r *friendRepository) DeleteRequest(memberId string, userId string) error {
 	return r.DB.Exec("DELETE FROM friend_requests WHERE receiver_id = ? AND sender_id = ?", memberId, userId).Error
 }
 
+// RemoveFriend removes members from the friends table.
 func (r *friendRepository) RemoveFriend(memberId string, userId string) error {
 	return r.DB.
 		Exec("DELETE FROM friends WHERE user_id = ? AND friend_id = ?", memberId, userId).
-		Exec("DELETE FROM friends WHERE user_id = ? AND friend_id = ?", userId, memberId).Error
+		Exec("DELETE FROM friends WHERE user_id = ? AND friend_id = ?", userId, memberId).
+		Error
 }
 
+// Save inserts the given user in the DB
 func (r *friendRepository) Save(user *model.User) error {
 	return r.DB.Save(&user).Error
 }

@@ -2,6 +2,8 @@ package model
 
 import "time"
 
+// Message represents a text message in a channel.
+// It may contain an Attachment that is displayed instead of text.
 type Message struct {
 	BaseModel
 	Text       *string
@@ -10,6 +12,7 @@ type Message struct {
 	Attachment *Attachment `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
+// MessageResponse is the API response of a Message
 type MessageResponse struct {
 	Id         string         `json:"id"`
 	Text       *string        `json:"text"`
@@ -19,6 +22,8 @@ type MessageResponse struct {
 	User       MemberResponse `json:"user"`
 }
 
+// Attachment represents a message attachment that displays
+// a file instead of text.
 type Attachment struct {
 	ID        string    `gorm:"primaryKey" json:"-"`
 	CreatedAt time.Time `gorm:"index" json:"-"`

@@ -10,17 +10,17 @@ import (
 	"net/http"
 )
 
-// REGISTER
+/*
+ * AuthHandler contains all routes related to account actions (/api/account)
+ */
 
-// registerReq is not exported, hence the lowercase name
-// it is used for validation and json marshalling
 type registerReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Username string `json:"username" binding:"required,gte=3,lte=30"`
 	Password string `json:"password" binding:"required,gte=6,lte=150"`
 }
 
-// Register handler
+// Register handler creates a new user
 func (h *Handler) Register(c *gin.Context) {
 	var req registerReq
 
@@ -50,15 +50,12 @@ func (h *Handler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, user)
 }
 
-// Login
-
-// loginReq is not exported
 type loginReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,gte=6,lte=30"`
 }
 
-// Login used to authenticate extant user
+// Login used to authenticate existent user
 func (h *Handler) Login(c *gin.Context) {
 	var req loginReq
 
@@ -86,9 +83,7 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// LOGOUT
-
-// Logout handler
+// Logout handler removes the current session
 func (h *Handler) Logout(c *gin.Context) {
 	c.Set("user", nil)
 
@@ -106,12 +101,11 @@ func (h *Handler) Logout(c *gin.Context) {
 	return
 }
 
-// FORGOT PASSWORD
-
 type forgotRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
+// ForgotPassword sends a password reset email to the requested email
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req forgotRequest
 	if valid := bindData(c, &req); !valid {
@@ -127,6 +121,7 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
+	// No user with the email found
 	if user.ID == "" {
 		c.JSON(http.StatusOK, true)
 		return
@@ -146,14 +141,13 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 	return
 }
 
-// RESET PASSWORD
-
 type resetRequest struct {
 	Token           string `json:"token" binding:"required"`
 	Password        string `json:"newPassword" binding:"required"`
 	ConfirmPassword string `json:"confirmNewPassword" binding:"required"`
 }
 
+// ResetPassword resets the users password with the provided token
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req resetRequest
 
@@ -161,6 +155,7 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 		return
 	}
 
+	// Check if passwords match
 	if req.Password != req.ConfirmPassword {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Passwords do not match",
@@ -183,6 +178,7 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	return
 }
 
+// setUserSession saves the users ID in the session
 func setUserSession(c *gin.Context, id string) {
 	session := sessions.Default(c)
 	session.Set("userId", id)

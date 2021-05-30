@@ -10,7 +10,10 @@ import (
 	"net/http"
 )
 
-// CURRENT USER
+/*
+ * AccountHandler contains all routes related to account actions (/api/account)
+ * that the authenticated user can do
+ */
 
 // Me handler calls services for getting
 // a user's details
@@ -31,15 +34,13 @@ func (h *Handler) Me(c *gin.Context) {
 	c.JSON(http.StatusOK, u)
 }
 
-// EDIT USER
-
 type editReq struct {
 	Username string                `form:"username" binding:"required,min=3,max=30"`
 	Email    string                `form:"email" binding:"required,email"`
 	Image    *multipart.FileHeader `form:"image" binding:"omitempty"`
 }
 
-// Edit handler
+// Edit handler edits the users account details
 func (h *Handler) Edit(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
@@ -64,8 +65,9 @@ func (h *Handler) Edit(c *gin.Context) {
 
 	authUser.Username = req.Username
 
+	// New email, check if it's unique
 	if authUser.Email != req.Email {
-		inUse := h.userService.CheckEmail(req.Email)
+		inUse := h.userService.IsEmailAlreadyInUse(req.Email)
 
 		if inUse {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -120,15 +122,13 @@ func (h *Handler) Edit(c *gin.Context) {
 	c.JSON(http.StatusOK, authUser)
 }
 
-// CHANGE PASSWORD
-
 type changeRequest struct {
 	CurrentPassword    string `json:"currentPassword" binding:"required"`
 	NewPassword        string `json:"newPassword" binding:"required,gte=6"`
 	ConfirmNewPassword string `json:"confirmNewPassword" binding:"required,gte=6"`
 }
 
-// ChangePassword handler
+// ChangePassword handler changes the users password
 func (h *Handler) ChangePassword(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	var req changeRequest
@@ -138,6 +138,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
+	// Check if passwords are equal
 	if req.NewPassword != req.ConfirmNewPassword {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"field":   "password",

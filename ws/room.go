@@ -7,6 +7,7 @@ import (
 	"log"
 )
 
+// Room represents a websocket room
 type Room struct {
 	id         string
 	clients    map[*Client]bool
@@ -50,26 +51,31 @@ func (room *Room) RunRoom() {
 	}
 }
 
+// registerClientInRoom adds the client to the room
 func (room *Room) registerClientInRoom(client *Client) {
 	room.clients[client] = true
 }
 
+// unregisterClientInRoom removes the client from the room
 func (room *Room) unregisterClientInRoom(client *Client) {
 	if _, ok := room.clients[client]; ok {
 		delete(room.clients, client)
 	}
 }
 
+// broadcastToClientsInRoom sends the given message to all members in the room
 func (room *Room) broadcastToClientsInRoom(message []byte) {
 	for client := range room.clients {
 		client.send <- message
 	}
 }
 
+// GetId returns the ID of the room
 func (room *Room) GetId() string {
 	return room.id
 }
 
+// publishRoomMessage publishes the message to all clients subscribing to the room
 func (room *Room) publishRoomMessage(message []byte) {
 	err := room.redis.Publish(ctx, room.GetId(), message).Err()
 
@@ -78,6 +84,7 @@ func (room *Room) publishRoomMessage(message []byte) {
 	}
 }
 
+// subscribeToRoomMessages subscribes to messages in this room
 func (room *Room) subscribeToRoomMessages() {
 	pubsub := room.redis.Subscribe(ctx, room.GetId())
 

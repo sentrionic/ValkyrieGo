@@ -10,18 +10,19 @@ import (
 )
 
 // guildRepository is data/repository implementation
-// of service layer UserRepository
+// of service layer GuildRepository
 type guildRepository struct {
 	DB *gorm.DB
 }
 
-// NewGuildRepository is a factory for initializing User Repositories
+// NewGuildRepository is a factory for initializing Guild Repositories
 func NewGuildRepository(db *gorm.DB) model.GuildRepository {
 	return &guildRepository{
 		DB: db,
 	}
 }
 
+// List returns all of the given users guilds
 func (r *guildRepository) List(uid string) (*[]model.GuildResponse, error) {
 	var guilds []model.GuildResponse
 	result := r.DB.Raw(`
@@ -53,6 +54,8 @@ func (r *guildRepository) List(uid string) (*[]model.GuildResponse, error) {
 	return &guilds, result.Error
 }
 
+// GuildMembers returns all members of the given guild and
+// whether they are the given user IDs friend
 func (r *guildRepository) GuildMembers(userId string, guildId string) (*[]model.MemberResponse, error) {
 	var members []model.MemberResponse
 	result := r.DB.Raw(`
@@ -80,10 +83,12 @@ func (r *guildRepository) GuildMembers(userId string, guildId string) (*[]model.
 	return &members, result.Error
 }
 
-func (r *guildRepository) Create(g *model.Guild) error {
-	return r.DB.Create(&g).Error
+// Create inserts the given guild in the DB
+func (r *guildRepository) Create(guild *model.Guild) error {
+	return r.DB.Create(&guild).Error
 }
 
+// FindUserByID returns a user containing all of their guilds
 func (r *guildRepository) FindUserByID(uid string) (*model.User, error) {
 	user := &model.User{}
 
@@ -101,6 +106,7 @@ func (r *guildRepository) FindUserByID(uid string) (*model.User, error) {
 	return user, nil
 }
 
+// FindByID returns the guild for the given id containing all of their fields
 func (r *guildRepository) FindByID(id string) (*model.Guild, error) {
 	guild := &model.Guild{}
 
@@ -117,10 +123,12 @@ func (r *guildRepository) FindByID(id string) (*model.Guild, error) {
 	return guild, nil
 }
 
-func (r *guildRepository) Save(g *model.Guild) error {
-	return r.DB.Save(&g).Error
+// Save updates the given guild
+func (r *guildRepository) Save(guild *model.Guild) error {
+	return r.DB.Save(&guild).Error
 }
 
+// RemoveMember removes the given user from the given guild
 func (r *guildRepository) RemoveMember(userId string, guildId string) error {
 	err := r.DB.
 		Exec("DELETE FROM members WHERE user_id = ? AND guild_id = ?", userId, guildId).
@@ -128,6 +136,7 @@ func (r *guildRepository) RemoveMember(userId string, guildId string) error {
 	return err
 }
 
+// Delete removes the given guild and all its associations
 func (r *guildRepository) Delete(guildId string) error {
 	err := r.DB.
 		Exec("DELETE FROM members WHERE guild_id = ?", guildId).
@@ -136,6 +145,7 @@ func (r *guildRepository) Delete(guildId string) error {
 	return err
 }
 
+// UnbanMember removes the given user from the bans of the given guild
 func (r *guildRepository) UnbanMember(userId string, guildId string) error {
 	err := r.DB.
 		Exec("DELETE FROM bans WHERE guild_id = ? AND user_id = ?", guildId, userId).
@@ -143,6 +153,7 @@ func (r *guildRepository) UnbanMember(userId string, guildId string) error {
 	return err
 }
 
+// GetBanList returns a list of all banned users from the given guild
 func (r *guildRepository) GetBanList(guildId string) (*[]model.BanResponse, error) {
 	var bans []model.BanResponse
 	err := r.DB.
@@ -158,6 +169,7 @@ func (r *guildRepository) GetBanList(guildId string) (*[]model.BanResponse, erro
 	return &bans, err
 }
 
+// GetMemberSettings returns the given members settings in the given guild
 func (r *guildRepository) GetMemberSettings(userId string, guildId string) (*model.MemberSettings, error) {
 	settings := model.MemberSettings{}
 	err := r.DB.
@@ -167,6 +179,7 @@ func (r *guildRepository) GetMemberSettings(userId string, guildId string) (*mod
 	return &settings, err.Error
 }
 
+// UpdateMemberSettings updates the settings of the given member in the given guild
 func (r *guildRepository) UpdateMemberSettings(settings *model.MemberSettings, userId string, guildId string) error {
 	err := r.DB.
 		Table("members").
@@ -180,6 +193,7 @@ func (r *guildRepository) UpdateMemberSettings(settings *model.MemberSettings, u
 	return err
 }
 
+// FindUsersByIds returns the found users for the given user IDs and guild ID
 func (r *guildRepository) FindUsersByIds(ids []string, guildId string) (*[]model.User, error) {
 	var users []model.User
 	result := r.DB.Raw(`
@@ -193,6 +207,7 @@ func (r *guildRepository) FindUsersByIds(ids []string, guildId string) (*[]model
 	return &users, result.Error
 }
 
+// GetMember returns user for the given userId and guildId
 func (r *guildRepository) GetMember(userId, guildId string) (*model.User, error) {
 	var user model.User
 	result := r.DB.Raw(`
@@ -206,6 +221,7 @@ func (r *guildRepository) GetMember(userId, guildId string) (*model.User, error)
 	return &user, result.Error
 }
 
+// UpdateMemberLastSeen sets the LastSeen field of the given user to the current date
 func (r *guildRepository) UpdateMemberLastSeen(userId, guildId string) error {
 	err := r.DB.
 		Table("members").
@@ -217,6 +233,7 @@ func (r *guildRepository) UpdateMemberLastSeen(userId, guildId string) error {
 	return err
 }
 
+// GetMemberIds returns the ids of all members of the given guild
 func (r *guildRepository) GetMemberIds(guildId string) (*[]string, error) {
 	var users []string
 	result := r.DB.Raw(`

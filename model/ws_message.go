@@ -5,12 +5,14 @@ import (
 	"log"
 )
 
+// ReceivedMessage represents a received websocket message
 type ReceivedMessage struct {
-	Action string `json:"action"`
-	Room   string `json:"room"`
+	Action  string  `json:"action"`
+	Room    string  `json:"room"`
 	Message *string `json:"message"`
 }
 
+// WebsocketMessage represents an emitted message
 type WebsocketMessage struct {
 	Action string      `json:"action"`
 	Data   interface{} `json:"data"`

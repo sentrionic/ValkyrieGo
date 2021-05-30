@@ -9,8 +9,8 @@ import (
 	"golang.org/x/crypto/scrypt"
 )
 
+// hashPassword hashes the given password using bcrypt
 func hashPassword(password string) (string, error) {
-	// example for making salt - https://play.golang.org/p/_Aw6WeWC42I
 	salt := make([]byte, 32)
 	_, err := rand.Read(salt)
 	if err != nil {
@@ -29,6 +29,7 @@ func hashPassword(password string) (string, error) {
 	return hashedPW, nil
 }
 
+// comparePasswords compares the stored password with the supplied one
 func comparePasswords(storedPassword string, suppliedPassword string) (bool, error) {
 	pwsalt := strings.Split(storedPassword, ".")
 

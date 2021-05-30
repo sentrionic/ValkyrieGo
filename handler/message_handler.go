@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+/*
+ * MessageHandler contains all routes related to message actions (/api/messages)
+ */
+
+// GetMessages returns messages for the given channel
+// It returns the most recent 35 or the ones after the given cursor
 func (h *Handler) GetMessages(c *gin.Context) {
 	channelId := c.Param("channelId")
 	userId := c.MustGet("userId").(string)
@@ -26,6 +32,7 @@ func (h *Handler) GetMessages(c *gin.Context) {
 		return
 	}
 
+	// Check if the user has access to said channel
 	err = h.channelService.IsChannelMember(channel, userId)
 
 	if err != nil {
@@ -35,6 +42,7 @@ func (h *Handler) GetMessages(c *gin.Context) {
 		return
 	}
 
+	// Cursor is based on the created_at field of the message
 	cursor := c.Query("cursor")
 
 	messages, err := h.messageService.GetMessages(userId, channel, cursor)
@@ -48,6 +56,7 @@ func (h *Handler) GetMessages(c *gin.Context) {
 		return
 	}
 
+	// If the channel does not have any messages, return an empty array
 	if len(*messages) == 0 {
 		var empty = make([]model.MessageResponse, 0)
 		c.JSON(http.StatusOK, empty)
@@ -57,16 +66,20 @@ func (h *Handler) GetMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, messages)
 }
 
+// messageRequest contains all field required to create a message.
+// Either text or file must be provided
 type messageRequest struct {
 	Text *string               `form:"text" binding:"omitempty,lte=2000"`
 	File *multipart.FileHeader `form:"file" binding:"omitempty"`
 }
 
+// CreateMessage creates a message in the given channel
 func (h *Handler) CreateMessage(c *gin.Context) {
 	channelId := c.Param("channelId")
 	userId := c.MustGet("userId").(string)
 	channel, err := h.channelService.Get(channelId)
 
+	// Check if the user has access to said channel
 	err = h.channelService.IsChannelMember(channel, userId)
 
 	if err != nil {
@@ -82,6 +95,7 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		return
 	}
 
+	// Either text or file must be provided
 	if req.Text == nil && req.File == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Either a message pr a file is required",
@@ -150,31 +164,37 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		},
 	}
 
+	// Get member settings if it is not a DM
 	if !channel.IsDM {
 		settings, _ := h.guildService.GetMemberSettings(userId, *channel.GuildID)
 		response.User.Nickname = settings.Nickname
 		response.User.Color = settings.Color
 	}
 
+	// Emit new message to the channel
 	h.socketService.EmitNewMessage(channelId, &response)
 
 	if channel.IsDM {
 		// Open the DM and push it to the top
 		_ = h.channelService.OpenDMForAll(channelId)
+		// Post a notification
 		h.socketService.EmitNewDMNotification(channelId, author)
 	} else {
 		// Update last activity in channel
 		channel.LastActivity = time.Now()
 		_ = h.channelService.UpdateChannel(channel)
+		// Post a notification
 		h.socketService.EmitNewNotification(*channel.GuildID, channelId)
 	}
 
 	c.JSON(http.StatusOK, true)
 }
 
+// EditMessage edits the given message with the given text
 func (h *Handler) EditMessage(c *gin.Context) {
 	messageId := c.Param("messageId")
 	userId := c.MustGet("userId").(string)
+
 	message, err := h.messageService.Get(messageId)
 
 	if err != nil {
@@ -199,6 +219,14 @@ func (h *Handler) EditMessage(c *gin.Context) {
 		return
 	}
 
+	if message.Text == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid request parameters. See errors",
+			"errors":  "Text is required",
+		})
+		return
+	}
+
 	message.Text = req.Text
 
 	if err := h.messageService.UpdateMessage(message); err != nil {
@@ -219,11 +247,14 @@ func (h *Handler) EditMessage(c *gin.Context) {
 			Id: userId,
 		},
 	}
+
+	// Emit edited message to the channel
 	h.socketService.EmitEditMessage(message.ChannelId, &response)
 
 	c.JSON(http.StatusOK, true)
 }
 
+// DeleteMessage deletes the given message
 func (h *Handler) DeleteMessage(c *gin.Context) {
 	messageId := c.Param("messageId")
 	userId := c.MustGet("userId").(string)
@@ -249,6 +280,7 @@ func (h *Handler) DeleteMessage(c *gin.Context) {
 		return
 	}
 
+	// Check if message author or guild owner
 	if !channel.IsDM {
 		guild, err := h.guildService.GetGuild(*channel.GuildID)
 
@@ -267,6 +299,7 @@ func (h *Handler) DeleteMessage(c *gin.Context) {
 			})
 			return
 		}
+		// Only message author check required
 	} else {
 		if message.UserId != userId {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -284,6 +317,7 @@ func (h *Handler) DeleteMessage(c *gin.Context) {
 		return
 	}
 
+	// Emit delete message to the channel
 	h.socketService.EmitDeleteMessage(message.ChannelId, message.ID)
 
 	c.JSON(http.StatusOK, true)

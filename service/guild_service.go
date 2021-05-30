@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// UserService acts as a struct for injecting an implementation of GuildRepository
+// GuildService acts as a struct for injecting an implementation of GuildRepository
 // for use in service methods
 type guildService struct {
 	UserRepository    model.UserRepository
@@ -28,7 +28,7 @@ type GSConfig struct {
 }
 
 // NewGuildService is a factory function for
-// initializing a UserService with its repository layer dependencies
+// initializing a GuildService with its repository layer dependencies
 func NewGuildService(c *GSConfig) model.GuildService {
 	return &guildService{
 		UserRepository:    c.UserRepository,

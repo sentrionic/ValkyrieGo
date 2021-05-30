@@ -9,6 +9,11 @@ import (
 	"net/http"
 )
 
+/*
+ * ChannelHandler contains all routes related to channel actions (/api/channels)
+ */
+
+// GuildChannels returns the given guild's channels
 func (h *Handler) GuildChannels(c *gin.Context) {
 	guildId := c.Param("id")
 	userId := c.MustGet("userId").(string)
@@ -24,6 +29,7 @@ func (h *Handler) GuildChannels(c *gin.Context) {
 		return
 	}
 
+	// Only get the channels if the user is a member
 	if !isMember(guild, userId) {
 		e := apperrors.NewNotFound("guild", guildId)
 
@@ -48,12 +54,16 @@ func (h *Handler) GuildChannels(c *gin.Context) {
 	c.JSON(http.StatusOK, channels)
 }
 
+// channelReq specifies the input form for creating a channel
+// IsPublic and Members do not need to be specified if you want
+// to create a public channel
 type channelReq struct {
 	Name     string   `json:"name" binding:"required,gte=3,lte=30"`
 	IsPublic *bool    `json:"isPublic"`
 	Members  []string `json:"members" binding:"omitempty"`
 }
 
+// CreateChannel creates a channel for the given guild param
 func (h *Handler) CreateChannel(c *gin.Context) {
 	var req channelReq
 
@@ -83,8 +93,9 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		return
 	}
 
+	// Check if the server already has 50 channels
 	if len(guild.Channels) >= 50 {
-		e := apperrors.NewBadRequest("channel limit is 100")
+		e := apperrors.NewBadRequest("channel limit is 50")
 
 		c.JSON(e.Status(), gin.H{
 			"error": e,
@@ -98,10 +109,12 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		GuildID:  &guildId,
 	}
 
+	// Channel is private
 	if req.IsPublic != nil && !*req.IsPublic {
 		channel.IsPublic = false
 
-		if !containsSelf(req.Members, userId) {
+		// Add the current user to the members if they are not in there
+		if !containsUser(req.Members, userId) {
 			req.Members = append(req.Members, userId)
 		}
 		members, err := h.guildService.FindUsersByIds(req.Members, guildId)
@@ -113,6 +126,7 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 			return
 		}
 
+		// Create private channel members
 		for _, m := range *members {
 			channel.PCMembers = append(channel.PCMembers, m)
 		}
@@ -138,12 +152,15 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 
 	response := channel.SerializeChannel()
 
+	// Emit the new channel to the guild members
 	h.socketService.EmitNewChannel(guildId, &response)
 
 	c.JSON(http.StatusCreated, response)
 	return
 }
 
+// PrivateChannelMembers returns the ids of all members
+// that are part of the channel
 func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 	channelId := c.Param("id")
 	userId := c.MustGet("userId").(string)
@@ -177,6 +194,7 @@ func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 		return
 	}
 
+	// Public channels do not have any private members
 	if channel.IsPublic {
 		var empty = make([]string, 0)
 		c.JSON(http.StatusOK, empty)
@@ -198,6 +216,7 @@ func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 	c.JSON(http.StatusOK, members)
 }
 
+// DirectMessages returns a list of the current users DMs
 func (h *Handler) DirectMessages(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
@@ -213,6 +232,7 @@ func (h *Handler) DirectMessages(c *gin.Context) {
 		return
 	}
 
+	// If the user does not have any dms, return an empty array
 	if len(*channels) == 0 {
 		var empty = make([]model.DirectMessage, 0)
 		c.JSON(http.StatusOK, empty)
@@ -222,6 +242,8 @@ func (h *Handler) DirectMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, channels)
 }
 
+// GetOrCreateDM gets the DM with the given member and creates it
+// if it does not already exist
 func (h *Handler) GetOrCreateDM(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("id")
@@ -266,7 +288,6 @@ func (h *Handler) GetOrCreateDM(c *gin.Context) {
 	}
 
 	// Create the dm channel between the current user and the member
-
 	id, _ := gonanoid.Nanoid(20)
 	channel := model.Channel{
 		Name:     id,
@@ -274,6 +295,7 @@ func (h *Handler) GetOrCreateDM(c *gin.Context) {
 		IsDM:     true,
 	}
 
+	// Create the DM channel
 	if err := h.channelService.CreateChannel(&channel); err != nil {
 		log.Printf("Failed to create channel: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
@@ -282,6 +304,7 @@ func (h *Handler) GetOrCreateDM(c *gin.Context) {
 		return
 	}
 
+	// Add the users to it
 	ids := []string{userId, memberId}
 	err = h.channelService.AddDMChannelMembers(ids, channel.ID, userId)
 
@@ -296,6 +319,7 @@ func (h *Handler) GetOrCreateDM(c *gin.Context) {
 	c.JSON(http.StatusOK, toDMChannel(member, channel.ID, userId))
 }
 
+// toDMChannel returns the DM response for the given channel and member
 func toDMChannel(member *model.User, channelId string, userId string) model.DirectMessage {
 	return model.DirectMessage{
 		Id: channelId,
@@ -309,6 +333,7 @@ func toDMChannel(member *model.User, channelId string, userId string) model.Dire
 	}
 }
 
+// EditChannel edits the specified channel
 func (h *Handler) EditChannel(c *gin.Context) {
 	var req channelReq
 
@@ -362,16 +387,20 @@ func (h *Handler) EditChannel(c *gin.Context) {
 
 	// Member Changes
 	if !*req.IsPublic {
-		if !containsSelf(req.Members, userId) {
+		// Check if the array contains the current member
+		if !containsUser(req.Members, userId) {
 			req.Members = append(req.Members, userId)
 		}
 
+		// Current members of the channel
 		current := make([]string, 0)
 		for _, member := range channel.PCMembers {
 			current = append(current, member.ID)
 		}
 
+		// Newly added members
 		newMembers := difference(req.Members, current)
+		// Members that got removed
 		toRemove := difference(current, req.Members)
 
 		err = h.channelService.AddPrivateChannelMembers(newMembers, channelId)
@@ -401,6 +430,7 @@ func (h *Handler) EditChannel(c *gin.Context) {
 		return
 	}
 
+	// Emit the channel changes to the guild members
 	response := channel.SerializeChannel()
 	h.socketService.EmitEditChannel(*channel.GuildID, &response)
 
@@ -423,6 +453,7 @@ func difference(a, b []string) []string {
 	return diff
 }
 
+// DeleteChannel removes the given channel from the guild
 func (h *Handler) DeleteChannel(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	channelId := c.Param("id")
@@ -456,6 +487,7 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 		return
 	}
 
+	// Check if the guild has the minimum amount of channels
 	if len(guild.Channels) == 1 {
 		e := apperrors.NewBadRequest("A server needs at least one channel")
 
@@ -473,12 +505,14 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 		return
 	}
 
+	// Emit signal to remove the channel from the guild
 	h.socketService.EmitDeleteChannel(channel)
 
 	c.JSON(http.StatusCreated, true)
 	return
 }
 
+// CloseDM closes the DM on the current users side
 func (h *Handler) CloseDM(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	channelId := c.Param("id")
@@ -500,7 +534,8 @@ func (h *Handler) CloseDM(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-func containsSelf(members []string, userId string) bool {
+// containsUser checks if the array contains the user
+func containsUser(members []string, userId string) bool {
 	for _, m := range members {
 		if m == userId {
 			return true

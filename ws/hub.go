@@ -5,6 +5,7 @@ import (
 	"github.com/sentrionic/valkyrie/model"
 )
 
+// Hub contains all rooms and clients
 type Hub struct {
 	clients        map[*Client]bool
 	register       chan *Client

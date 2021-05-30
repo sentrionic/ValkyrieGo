@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Guild represents the server many users can chat in.
 type Guild struct {
 	BaseModel
 	Name        string `gorm:"not null"`
@@ -16,6 +17,9 @@ type Guild struct {
 	Bans        []User         `gorm:"many2many:bans;constraint:OnDelete:CASCADE;"`
 }
 
+// GuildResponse contains all info to display a guild.
+// The DefaultChannelId is the channel the user first gets directed to
+// and is the oldest channel of the guild.
 type GuildResponse struct {
 	Id               string    `json:"id"`
 	Name             string    `json:"name"`
@@ -28,7 +32,7 @@ type GuildResponse struct {
 }
 
 // SerializeGuild returns the guild API response.
-// The channelId represents the default channel the user gets send to.
+// The DefaultChannelId represents the default channel the user gets send to.
 func (g Guild) SerializeGuild(channelId string) GuildResponse {
 	return GuildResponse{
 		Id:               g.ID,

@@ -5,7 +5,7 @@ import (
 )
 
 // friendService acts as a struct for injecting an implementation of UserRepository
-// for use in service methods
+// and FriendRepository for use in service methods
 type friendService struct {
 	UserRepository   model.UserRepository
 	FriendRepository model.FriendRepository
@@ -19,7 +19,7 @@ type FSConfig struct {
 }
 
 // NewFriendService is a factory function for
-// initializing a UserService with its repository layer dependencies
+// initializing a FriendService with its repository layer dependencies
 func NewFriendService(c *FSConfig) model.FriendService {
 	return &friendService{
 		UserRepository:   c.UserRepository,

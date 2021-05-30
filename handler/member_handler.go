@@ -8,11 +8,18 @@ import (
 	"net/http"
 )
 
+/*
+ * MemberHandler contains all routes related to mod actions (/api/guilds)
+ */
+
+// memberReq contains the MemberId of the user
+// that needs to be moderated
 type memberReq struct {
 	MemberId string `json:"memberId"`
 }
 
-// GetMemberSettings handler
+// GetMemberSettings gets the current users role color and nickname
+// for the given guild
 func (h *Handler) GetMemberSettings(c *gin.Context) {
 	guildId := c.Param("guildId")
 	userId := c.MustGet("userId").(string)
@@ -42,7 +49,8 @@ func (h *Handler) GetMemberSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, settings)
 }
 
-// EditMemberSettings handler
+// EditMemberSettings changes the current users role color and nickname
+// for the given guild
 func (h *Handler) EditMemberSettings(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -58,6 +66,7 @@ func (h *Handler) EditMemberSettings(c *gin.Context) {
 
 	userId := c.MustGet("userId").(string)
 
+	// Check if the user is a member of the guild
 	if !isMember(guild, userId) {
 		e := apperrors.NewNotFound("guild", guildId)
 
@@ -88,7 +97,7 @@ func (h *Handler) EditMemberSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// GetBanList handler
+// GetBanList returns a list of all banned users for the given guild
 func (h *Handler) GetBanList(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -121,6 +130,7 @@ func (h *Handler) GetBanList(c *gin.Context) {
 		return
 	}
 
+	// If the guild does not have any bans, return an empty array
 	if len(*bans) == 0 {
 		empty := make([]model.BanResponse, 0)
 		c.JSON(http.StatusOK, empty)
@@ -130,7 +140,7 @@ func (h *Handler) GetBanList(c *gin.Context) {
 	c.JSON(http.StatusOK, bans)
 }
 
-// BanMember handler
+// BanMember bans the provided member from the given guild
 func (h *Handler) BanMember(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -198,13 +208,14 @@ func (h *Handler) BanMember(c *gin.Context) {
 		return
 	}
 
+	// Emit signals to remove the member from the guild
 	h.socketService.EmitRemoveMember(guild.ID, member.ID)
 	h.socketService.EmitRemoveFromGuild(member.ID, guildId)
 
 	c.JSON(http.StatusOK, true)
 }
 
-// UnbanMember handler
+// UnbanMember unbans the specified user from the given guild
 func (h *Handler) UnbanMember(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -251,7 +262,7 @@ func (h *Handler) UnbanMember(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// KickMember handler
+// KickMember kicks the provided member from the given guild
 func (h *Handler) KickMember(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -309,6 +320,7 @@ func (h *Handler) KickMember(c *gin.Context) {
 		return
 	}
 
+	// Emit signals to remove the member from the guild
 	h.socketService.EmitRemoveMember(guild.ID, member.ID)
 	h.socketService.EmitRemoveFromGuild(member.ID, guildId)
 

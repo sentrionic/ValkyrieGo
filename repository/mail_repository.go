@@ -8,13 +8,15 @@ import (
 	"net/smtp"
 )
 
+// mailRepository contains the gmail username and password
+// as well as the frontend origin.
 type mailRepository struct {
 	username string
 	password string
 	origin   string
 }
 
-// NewMailRepository is a factory for initializing User Repositories
+// NewMailRepository is a factory for initializing Mail Repositories
 func NewMailRepository(username string, password string, origin string) model.MailRepository {
 	return &mailRepository{
 		username: username,
@@ -23,7 +25,8 @@ func NewMailRepository(username string, password string, origin string) model.Ma
 	}
 }
 
-func (m *mailRepository) SendMail(email string, token string) error {
+// SendResetMail sends a password reset email with the given reset token
+func (m *mailRepository) SendResetMail(email string, token string) error {
 
 	msg := "From: " + m.username + "\n" +
 		"To: " + email + "\n" +

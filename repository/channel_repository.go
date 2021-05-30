@@ -8,22 +8,24 @@ import (
 )
 
 // channelRepository is data/repository implementation
-// of service layer UserRepository
+// of service layer ChannelRepository
 type channelRepository struct {
 	DB *gorm.DB
 }
 
-// NewChannelRepository is a factory for initializing User Repositories
+// NewChannelRepository is a factory for initializing Channel Repositories
 func NewChannelRepository(db *gorm.DB) model.ChannelRepository {
 	return &channelRepository{
 		DB: db,
 	}
 }
 
+// Create inserts a channel in the DB
 func (r *channelRepository) Create(c *model.Channel) error {
 	return r.DB.Create(&c).Error
 }
 
+// GetGuildDefault fetches the oldest channel for the given guildId from the DB
 func (r *channelRepository) GetGuildDefault(guildId string) (*model.Channel, error) {
 	channel := model.Channel{}
 	result := r.DB.
@@ -34,6 +36,8 @@ func (r *channelRepository) GetGuildDefault(guildId string) (*model.Channel, err
 	return &channel, result.Error
 }
 
+// Get fetches all public channels for the given guildId
+// and the private channels the given user is part in
 func (r *channelRepository) Get(userId string, guildId string) (*[]model.ChannelResponse, error) {
 	var channels []model.ChannelResponse
 
@@ -55,7 +59,8 @@ func (r *channelRepository) Get(userId string, guildId string) (*[]model.Channel
 	return &channels, result.Error
 }
 
-type DMQuery struct {
+// dmQuery represents the fetched fields for GetDirectMessages
+type dmQuery struct {
 	ChannelId string
 	Id        string
 	Username  string
@@ -64,8 +69,9 @@ type DMQuery struct {
 	IsFriend  bool
 }
 
+// GetDirectMessages returns all DMs for the given user
 func (r *channelRepository) GetDirectMessages(userId string) (*[]model.DirectMessage, error) {
-	var results []DMQuery
+	var results []dmQuery
 
 	err := r.DB.
 		Raw(`
@@ -90,6 +96,7 @@ func (r *channelRepository) GetDirectMessages(userId string) (*[]model.DirectMes
 
 	var channels []model.DirectMessage
 
+	// Turn into DirectMessage response
 	for _, dm := range results {
 		channel := model.DirectMessage{
 			Id: dm.ChannelId,
@@ -107,6 +114,8 @@ func (r *channelRepository) GetDirectMessages(userId string) (*[]model.DirectMes
 	return &channels, err.Error
 }
 
+// GetDirectMessageChannel returns the dm channel ID of the given members
+// if it exists.
 func (r *channelRepository) GetDirectMessageChannel(userId string, memberId string) (*string, error) {
 	var id string
 
@@ -124,12 +133,15 @@ func (r *channelRepository) GetDirectMessageChannel(userId string, memberId stri
 	return &id, result.Error
 }
 
+// GetById returns the channel with its PCMembers for the given channel id
 func (r *channelRepository) GetById(channelId string) (*model.Channel, error) {
 	var channel model.Channel
 	err := r.DB.Preload("PCMembers").Where("id = ?", channelId).First(&channel).Error
 	return &channel, err
 }
 
+// GetPrivateChannelMembers returns the ids of all users
+// that are members of the given channel
 func (r *channelRepository) GetPrivateChannelMembers(channelId string) (*[]string, error) {
 	var members []string
 	err := r.DB.
@@ -138,10 +150,13 @@ func (r *channelRepository) GetPrivateChannelMembers(channelId string) (*[]strin
 	return &members, err
 }
 
+// AddDMChannelMembers inserts the given DM members in the DB
 func (r *channelRepository) AddDMChannelMembers(members []model.DMMember) error {
 	return r.DB.CreateInBatches(&members, len(members)).Error
 }
 
+// SetDirectMessageStatus opens or closes the dm channel for the given
+// userId
 func (r *channelRepository) SetDirectMessageStatus(dmId string, userId string, isOpen bool) error {
 	err := r.DB.
 		Table("dm_members").
@@ -154,6 +169,7 @@ func (r *channelRepository) SetDirectMessageStatus(dmId string, userId string, i
 	return err
 }
 
+// OpenDMForAll opens the given dm channel for all users in the channel
 func (r *channelRepository) OpenDMForAll(dmId string) error {
 	err := r.DB.
 		Table("dm_members").
@@ -166,21 +182,22 @@ func (r *channelRepository) OpenDMForAll(dmId string) error {
 	return err
 }
 
+// DeleteChannel deletes the given channel from the DB
 func (r *channelRepository) DeleteChannel(channel *model.Channel) error {
-	return r.DB.
-		Delete(&channel).Error
+	return r.DB.Delete(&channel).Error
 }
 
+// UpdateChannel updates the given channel in the DB
 func (r *channelRepository) UpdateChannel(channel *model.Channel) error {
 	return r.DB.Save(&channel).Error
 }
 
+// CleanPCMembers removes all private channel members from the given channel
 func (r *channelRepository) CleanPCMembers(channelId string) error {
-	err := r.DB.
-		Exec("DELETE FROM pcmembers WHERE channel_id = ?", channelId)
-	return err.Error
+	return r.DB.Exec("DELETE FROM pcmembers WHERE channel_id = ?", channelId).Error
 }
 
+// AddPrivateChannelMembers inserts the given member as PCMembers in the given channel
 func (r *channelRepository) AddPrivateChannelMembers(memberIds []string, channelId string) error {
 	var err error = nil
 	for _, id := range memberIds {
@@ -189,12 +206,14 @@ func (r *channelRepository) AddPrivateChannelMembers(memberIds []string, channel
 	return err
 }
 
+// RemovePrivateChannelMembers removes the given ids from the PCMembers of the given channel
 func (r *channelRepository) RemovePrivateChannelMembers(memberIds []string, channelId string) error {
 	return r.DB.
 		Exec("DELETE FROM pcmembers WHERE channel_id = ? AND user_id IN ?", channelId, memberIds).
 		Error
 }
 
+// FindDMByUserAndChannelId returns the id of dm channel for the given channelId and userId
 func (r *channelRepository) FindDMByUserAndChannelId(channelId, userId string) (string, error) {
 	var id string
 	err := r.DB.
@@ -203,6 +222,7 @@ func (r *channelRepository) FindDMByUserAndChannelId(channelId, userId string) (
 	return id, err
 }
 
+// GetDMMemberIds returns the ids of all dm members for the given channel
 func (r *channelRepository) GetDMMemberIds(channelId string) (*[]string, error) {
 	var members []string
 	err := r.DB.

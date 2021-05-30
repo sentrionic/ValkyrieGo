@@ -8,6 +8,11 @@ import (
 	"net/http"
 )
 
+/*
+ * FriendHandler contains all routes related to friend actions (/api/account)
+ */
+
+// GetUserFriends returns the current users friends
 func (h *Handler) GetUserFriends(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
@@ -26,13 +31,14 @@ func (h *Handler) GetUserFriends(c *gin.Context) {
 	c.JSON(http.StatusOK, friends)
 }
 
+// GetUserRequests returns the current users friend requests
 func (h *Handler) GetUserRequests(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
-	users, err := h.friendService.GetRequests(userId)
+	requests, err := h.friendService.GetRequests(userId)
 
 	if err != nil {
-		log.Printf("Unable to find friends for id: %v\n%v", userId, err)
+		log.Printf("Unable to find requests for id: %v\n%v", userId, err)
 		e := apperrors.NewNotFound("user", userId)
 
 		c.JSON(e.Status(), gin.H{
@@ -41,9 +47,10 @@ func (h *Handler) GetUserRequests(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, requests)
 }
 
+// SendFriendRequest sends a friend request to the given member param
 func (h *Handler) SendFriendRequest(c *gin.Context) {
 
 	userId := c.MustGet("userId").(string)
@@ -80,6 +87,7 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 		return
 	}
 
+	// Check if they are already friends and no request exists
 	if !isFriend(authUser, member.ID) && !containsRequest(authUser, member) {
 		authUser.Requests = append(authUser.Requests, *member)
 		err = h.friendService.SaveRequests(authUser)
@@ -94,6 +102,7 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 			return
 		}
 
+		// Emit friends request to the added user
 		h.socketService.EmitAddFriendRequest(memberId, &model.FriendRequest{
 			Id:       authUser.ID,
 			Username: authUser.Username,
@@ -105,13 +114,15 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
+// RemoveFriend removes the given member param from the current
+// users friends.
 func (h *Handler) RemoveFriend(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("memberId")
 
 	if userId == memberId {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "You cannot cancel yourself",
+			"error": "You cannot remove yourself",
 		})
 		return
 	}
@@ -153,12 +164,14 @@ func (h *Handler) RemoveFriend(c *gin.Context) {
 			return
 		}
 
+		// Emit signal to remove the person from the friends
 		h.socketService.EmitRemoveFriend(userId, memberId)
 	}
 
 	c.JSON(http.StatusOK, true)
 }
 
+// AcceptFriendRequest accepts the friend request from the given member param
 func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("memberId")
@@ -194,7 +207,9 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 		return
 	}
 
+	// Check if the current user is in the members requests
 	if containsRequest(member, authUser) {
+		// Add each other to friends
 		authUser.Friends = append(authUser.Friends, *member)
 		member.Friends = append(member.Friends, *authUser)
 		err = h.friendService.SaveRequests(member)
@@ -222,12 +237,15 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 			return
 		}
 
+		// Emit friend information to the accepted person
 		h.socketService.EmitAddFriend(authUser, member)
 	}
 
 	c.JSON(http.StatusOK, true)
 }
 
+// CancelFriendRequest removes the given member param from the current
+// users requests.
 func (h *Handler) CancelFriendRequest(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("memberId")
@@ -263,6 +281,7 @@ func (h *Handler) CancelFriendRequest(c *gin.Context) {
 		return
 	}
 
+	// Check if the member is in the current user's requests
 	if containsRequest(authUser, member) {
 		err := h.friendService.DeleteRequest(member.ID, authUser.ID)
 

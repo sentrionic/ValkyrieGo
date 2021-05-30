@@ -2,6 +2,8 @@ package model
 
 import "time"
 
+// Member represents a user in a guild and is the join table between
+// User and Guild.
 type Member struct {
 	UserID    string    `gorm:"primaryKey;constraint:OnDelete:CASCADE;"`
 	GuildID   string    `gorm:"primaryKey;constraint:OnDelete:CASCADE;"`
@@ -12,6 +14,7 @@ type Member struct {
 	UpdatedAt time.Time
 }
 
+// MemberResponse is the API response of a member.
 type MemberResponse struct {
 	Id        string    `json:"id"`
 	Username  string    `json:"username"`
@@ -24,12 +27,14 @@ type MemberResponse struct {
 	IsFriend  bool      `json:"isFriend"`
 }
 
+// BanResponse is the API response of a banned member.
 type BanResponse struct {
 	Id       string `json:"id"`
 	Username string `json:"username"`
 	Image    string `json:"image"`
 }
 
+// MemberSettings is the API response of a member's guild settings.
 type MemberSettings struct {
 	Nickname *string `json:"nickname" binding:"omitempty,gte=3,lte=30"`
 	Color    *string `json:"color" binding:"omitempty,hexcolor"`

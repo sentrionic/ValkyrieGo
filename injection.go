@@ -11,6 +11,9 @@ import (
 	"github.com/sentrionic/valkyrie/repository"
 	"github.com/sentrionic/valkyrie/service"
 	"github.com/sentrionic/valkyrie/ws"
+	"github.com/ulule/limiter/v3"
+	mgin "github.com/ulule/limiter/v3/drivers/middleware/gin"
+	sredis "github.com/ulule/limiter/v3/drivers/store/redis"
 	"log"
 	"net/http"
 	"os"
@@ -83,6 +86,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	})
 	router.Use(c)
 
+	// initialize session store
 	redisURL := os.Getenv("REDIS_URL")
 	secret := os.Getenv("SECRET")
 	store, _ := redis.NewStore(10, "tcp", redisURL, "", []byte(secret))
@@ -98,17 +102,30 @@ func inject(d *dataSources) (*gin.Engine, error) {
 
 	router.Use(sessions.Sessions("vlk", store))
 
+	// set time out
 	handlerTimeout := os.Getenv("HANDLER_TIMEOUT")
 	ht, err := strconv.ParseInt(handlerTimeout, 0, 64)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse HANDLER_TIMEOUT as int: %w", err)
 	}
 
+	// set max body size
 	maxBodyBytes := os.Getenv("MAX_BODY_BYTES")
 	mbb, err := strconv.ParseInt(maxBodyBytes, 0, 64)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse MAX_BODY_BYTES as int: %w", err)
 	}
+
+	// add rate limit
+	rate := limiter.Rate{
+		Period: 1 * time.Hour,
+		Limit:  1000,
+	}
+
+	limitStore, _ := sredis.NewStore(d.RedisClient)
+
+	rateLimiter := mgin.NewMiddleware(limiter.New(limitStore, rate))
+	router.Use(rateLimiter)
 
 	// Websocket Setup
 	hub := ws.NewWebsocketHub(&ws.Config{
