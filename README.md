@@ -43,10 +43,13 @@ A [Discord](https://discord.com) backend clone written in Golang.
 
 - `Required`
 
+        PORT=8080
         DATABASE_URL="postgresql://<username>:<password>@localhost:5432/db_name"
         REDIS_URL=localhost:6379
         CORS_ORIGIN=http://localhost:3000
         SECRET=SUPERSECRET
+        HANDLER_TIMEOUT=5
+        MAX_BODY_BYTES=4194304 # 4MB in Bytes = 4 * 1024 * 1024
 
 - `Optional: Not needed to run the app, but you won't be able to upload files or send emails.`
 

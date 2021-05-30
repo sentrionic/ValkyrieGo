@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"log"
 	"net/http"
@@ -14,10 +15,12 @@ import (
 func main() {
 	log.Println("Starting server...")
 
-	// Load env
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	// Load dev env from .env file
+	if gin.Mode() != "release" {
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatalln("Error loading .env file")
+		}
 	}
 
 	// initialize data sources
@@ -34,7 +37,7 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + os.Getenv("PORT"),
 		Handler: router,
 	}
 

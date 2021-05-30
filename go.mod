@@ -2,6 +2,8 @@ module github.com/sentrionic/valkyrie
 
 go 1.16
 
+// +heroku goVersion go1.16
+
 require (
 	github.com/aws/aws-sdk-go v1.38.40
 	github.com/bwmarrin/snowflake v0.3.0

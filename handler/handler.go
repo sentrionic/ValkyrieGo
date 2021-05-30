@@ -5,6 +5,7 @@ import (
 	"github.com/sentrionic/valkyrie/handler/middleware"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
+	"net/http"
 	"time"
 )
 
@@ -49,6 +50,9 @@ func NewHandler(c *Config) {
 	}
 
 	c.R.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
+	c.R.GET("", func(c *gin.Context) {
+		c.JSON(http.StatusOK, "Welcome to the ValkyrieGo API")
+	})
 
 	// Create an account group
 	ag := c.R.Group("api/account")
