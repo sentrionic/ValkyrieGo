@@ -29,7 +29,7 @@ type GuildResponse struct {
 	UpdatedAt        time.Time `json:"updatedAt"`
 	HasNotification  bool      `json:"hasNotification"`
 	DefaultChannelId string    `json:"default_channel_id"`
-}
+} //@name GuildResponse
 
 // SerializeGuild returns the guild API response.
 // The DefaultChannelId represents the default channel the user gets send to.

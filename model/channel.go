@@ -25,7 +25,7 @@ type ChannelResponse struct {
 	CreatedAt       time.Time `json:"createdAt"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 	HasNotification bool      `json:"hasNotification"`
-}
+} //@name Channel
 
 // SerializeChannel returns the channel API response.
 func (c Channel) SerializeChannel() ChannelResponse {

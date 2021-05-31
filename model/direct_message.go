@@ -5,7 +5,7 @@ package model
 type DirectMessage struct {
 	Id   string `json:"id"`
 	User DMUser `json:"user"`
-}
+} //@name DirectMessage
 
 // DMUser is the other member of the DM.
 type DMUser struct {
@@ -14,4 +14,4 @@ type DMUser struct {
 	Image    string `json:"image"`
 	IsOnline bool   `json:"isOnline"`
 	IsFriend bool   `json:"isFriend"`
-}
+} //@name DMUser

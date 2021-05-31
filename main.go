@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+// @title Valkyrie API
+// @version 1.0
+// @description Valkyrie REST API Specs. This service uses sessions for authentication
+
+// @license.name Apache 2.0
+// @host localhost:8080
+// @BasePath /api
+
 func main() {
 	log.Println("Starting server...")
 

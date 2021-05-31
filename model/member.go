@@ -25,17 +25,17 @@ type MemberResponse struct {
 	Nickname  *string   `json:"nickname"`
 	Color     *string   `json:"color"`
 	IsFriend  bool      `json:"isFriend"`
-}
+} //@name Member
 
 // BanResponse is the API response of a banned member.
 type BanResponse struct {
 	Id       string `json:"id"`
 	Username string `json:"username"`
 	Image    string `json:"image"`
-}
+} //@name BanResponse
 
 // MemberSettings is the API response of a member's guild settings.
 type MemberSettings struct {
 	Nickname *string `json:"nickname" binding:"omitempty,gte=3,lte=30"`
 	Color    *string `json:"color" binding:"omitempty,hexcolor"`
-}
+} //@name MemberSettings

@@ -17,6 +17,12 @@ import (
 
 // Me handler calls services for getting
 // a user's details
+// Me godoc
+// @Tags Account
+// @Summary Get Current User
+// @Produce  json
+// @Success 200 {object} model.User
+// @Router /account [get]
 func (h *Handler) Me(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	u, err := h.userService.Get(userId)
@@ -35,12 +41,23 @@ func (h *Handler) Me(c *gin.Context) {
 }
 
 type editReq struct {
-	Username string                `form:"username" binding:"required,min=3,max=30"`
-	Email    string                `form:"email" binding:"required,email"`
-	Image    *multipart.FileHeader `form:"image" binding:"omitempty"`
-}
+	// Min 3, max 30 characters.
+	Username string `form:"username" binding:"required,min=3,max=30"`
+	// Must be unique
+	Email string `form:"email" binding:"required,email"`
+	// image/png or image/jpeg
+	Image *multipart.FileHeader `form:"image" binding:"omitempty" swaggertype:"string" format:"binary"`
+} //@name EditUser
 
 // Edit handler edits the users account details
+// Edit godoc
+// @Tags Account
+// @Summary Update Current User
+// @Accept mpfd
+// @Produce  json
+// @Param account body editReq true "Update Account"
+// @Success 200 {object} model.User
+// @Router /account [put]
 func (h *Handler) Edit(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
@@ -123,12 +140,22 @@ func (h *Handler) Edit(c *gin.Context) {
 }
 
 type changeRequest struct {
-	CurrentPassword    string `json:"currentPassword" binding:"required"`
-	NewPassword        string `json:"newPassword" binding:"required,gte=6"`
+	CurrentPassword string `json:"currentPassword" binding:"required"`
+	// Min 6, max 150 characters.
+	NewPassword string `json:"newPassword" binding:"required,gte=6"`
+	// Must be the same as the newPassword value.
 	ConfirmNewPassword string `json:"confirmNewPassword" binding:"required,gte=6"`
-}
+} //@name ChangePasswordRequest
 
 // ChangePassword handler changes the users password
+// ChangePassword godoc
+// @Tags Account
+// @Summary Change Current User's Password
+// @Accept json
+// @Produce  json
+// @Param request body changeRequest true "Change Password"
+// @Success 200 {object} model.Success
+// @Router /account/change-password [put]
 func (h *Handler) ChangePassword(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	var req changeRequest

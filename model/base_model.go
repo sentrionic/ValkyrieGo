@@ -11,3 +11,10 @@ type BaseModel struct {
 	CreatedAt time.Time `gorm:"index" json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+// Success is the default response for successful operation
+// Returns true without the JSON
+type Success struct {
+	// Only returns true, not an json object
+	Success bool `json:"success"`
+} //@name SuccessResponse

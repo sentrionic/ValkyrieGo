@@ -12,4 +12,4 @@ type User struct {
 	Requests []User    `gorm:"many2many:friend_requests;joinForeignKey:sender_id;joinReferences:receiver_id" json:"-"`
 	Guilds   []Guild   `gorm:"many2many:members;" json:"-"`
 	Message  []Message `json:"-"`
-}
+} //@name User

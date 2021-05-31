@@ -13,6 +13,12 @@ import (
  */
 
 // GetUserFriends returns the current users friends
+// GetUserFriends godoc
+// @Tags Friends
+// @Summary Get Current User's Friends
+// @Produce  json
+// @Success 200 {array} model.Friend
+// @Router /account/me/friends [get]
 func (h *Handler) GetUserFriends(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
@@ -32,6 +38,12 @@ func (h *Handler) GetUserFriends(c *gin.Context) {
 }
 
 // GetUserRequests returns the current users friend requests
+// GetUserRequests godoc
+// @Tags Friends
+// @Summary Get Current User's Friend Requests
+// @Produce  json
+// @Success 200 {array} model.FriendRequest
+// @Router /account/me/pending [get]
 func (h *Handler) GetUserRequests(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
@@ -51,6 +63,13 @@ func (h *Handler) GetUserRequests(c *gin.Context) {
 }
 
 // SendFriendRequest sends a friend request to the given member param
+// SendFriendRequest godoc
+// @Tags Friends
+// @Summary Send Friend Request
+// @Produce  json
+// @Param memberId path string true "User ID"
+// @Success 200 {object} model.Success
+// @Router /account/{memberId}/friend [post]
 func (h *Handler) SendFriendRequest(c *gin.Context) {
 
 	userId := c.MustGet("userId").(string)
@@ -116,6 +135,13 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 
 // RemoveFriend removes the given member param from the current
 // users friends.
+// RemoveFriend godoc
+// @Tags Friends
+// @Summary Remove Friend
+// @Produce  json
+// @Param memberId path string true "User ID"
+// @Success 200 {object} model.Success
+// @Router /account/{memberId}/friend [delete]
 func (h *Handler) RemoveFriend(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("memberId")
@@ -172,6 +198,13 @@ func (h *Handler) RemoveFriend(c *gin.Context) {
 }
 
 // AcceptFriendRequest accepts the friend request from the given member param
+// AcceptFriendRequest godoc
+// @Tags Friends
+// @Summary Accept Friend's Request
+// @Produce  json
+// @Param memberId path string true "User ID"
+// @Success 200 {object} model.Success
+// @Router /account/{memberId}/friend/accept [post]
 func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("memberId")
@@ -246,6 +279,13 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 
 // CancelFriendRequest removes the given member param from the current
 // users requests.
+// CancelFriendRequest godoc
+// @Tags Friends
+// @Summary Cancel Friend's Request
+// @Produce  json
+// @Param memberId path string true "User ID"
+// @Success 200 {object} model.Success
+// @Router /account/{memberId}/friend/cancel [post]
 func (h *Handler) CancelFriendRequest(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("memberId")

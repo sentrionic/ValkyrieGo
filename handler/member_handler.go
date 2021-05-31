@@ -16,10 +16,17 @@ import (
 // that needs to be moderated
 type memberReq struct {
 	MemberId string `json:"memberId"`
-}
+} //@name MemberRequest
 
 // GetMemberSettings gets the current users role color and nickname
 // for the given guild
+// GetMemberSettings godoc
+// @Tags Members
+// @Summary Get Member Settings
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Success 200 {object} model.MemberSettings
+// @Router /guilds/{guildId}/member [get]
 func (h *Handler) GetMemberSettings(c *gin.Context) {
 	guildId := c.Param("guildId")
 	userId := c.MustGet("userId").(string)
@@ -51,6 +58,15 @@ func (h *Handler) GetMemberSettings(c *gin.Context) {
 
 // EditMemberSettings changes the current users role color and nickname
 // for the given guild
+// EditMemberSettings godoc
+// @Tags Members
+// @Summary Edit Member Settings
+// @Accepts json
+// @Produce  json
+// @Param request body  model.MemberSettings true "Edit Member"
+// @Param guildId path string true "Guild ID"
+// @Success 200 {object} model.Success
+// @Router /guilds/{guildId}/member [put]
 func (h *Handler) EditMemberSettings(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -98,6 +114,13 @@ func (h *Handler) EditMemberSettings(c *gin.Context) {
 }
 
 // GetBanList returns a list of all banned users for the given guild
+// GetBanList godoc
+// @Tags Members
+// @Summary Get Guild Ban list
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Success 200 {array} model.BanResponse
+// @Router /guilds/{guildId}/bans [get]
 func (h *Handler) GetBanList(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -141,6 +164,14 @@ func (h *Handler) GetBanList(c *gin.Context) {
 }
 
 // BanMember bans the provided member from the given guild
+// BanMember godoc
+// @Tags Members
+// @Summary Ban Member
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Param request body memberReq true "Member ID"
+// @Success 200 {array} model.Success
+// @Router /guilds/{guildId}/bans [post]
 func (h *Handler) BanMember(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -216,6 +247,14 @@ func (h *Handler) BanMember(c *gin.Context) {
 }
 
 // UnbanMember unbans the specified user from the given guild
+// BanMember godoc
+// @Tags Members
+// @Summary Unban Member
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Param request body memberReq true "Member ID"
+// @Success 200 {array} model.Success
+// @Router /guilds/{guildId}/bans [delete]
 func (h *Handler) UnbanMember(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -263,6 +302,14 @@ func (h *Handler) UnbanMember(c *gin.Context) {
 }
 
 // KickMember kicks the provided member from the given guild
+// KickMember godoc
+// @Tags Members
+// @Summary Kick Member
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Param request body memberReq true "Member ID"
+// @Success 200 {array} model.Success
+// @Router /guilds/{guildId}/kick [post]
 func (h *Handler) KickMember(c *gin.Context) {
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)

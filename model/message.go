@@ -20,7 +20,7 @@ type MessageResponse struct {
 	UpdatedAt  time.Time      `json:"updatedAt"`
 	Attachment *Attachment    `json:"attachment"`
 	User       MemberResponse `json:"user"`
-}
+} //@name Message
 
 // Attachment represents a message attachment that displays
 // a file instead of text.
@@ -32,4 +32,4 @@ type Attachment struct {
 	FileType  string    `json:"filetype"`
 	Filename  string    `json:"filename"`
 	MessageId string    `gorm:"constraint:OnDelete:CASCADE;" json:"-"`
-}
+} //@name Attachment

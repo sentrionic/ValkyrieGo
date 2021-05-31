@@ -20,6 +20,12 @@ import (
  */
 
 // GetUserGuilds returns the current users guilds
+// GetUserGuilds godoc
+// @Tags Guilds
+// @Summary Get Current User's Guilds
+// @Produce  json
+// @Success 200 {array} model.GuildResponse
+// @Router /guilds [get]
 func (h *Handler) GetUserGuilds(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
@@ -39,6 +45,13 @@ func (h *Handler) GetUserGuilds(c *gin.Context) {
 }
 
 // GetGuildMembers returns the given guild's members
+// GetGuildMembers godoc
+// @Tags Guilds
+// @Summary Get Guild Members
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Success 200 {array} model.MemberResponse
+// @Router /guilds/{guildId}/members [get]
 func (h *Handler) GetGuildMembers(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	guildId := c.Param("guildId")
@@ -81,10 +94,19 @@ func (h *Handler) GetGuildMembers(c *gin.Context) {
 }
 
 type createGuildRequest struct {
+	// Guild Name. 3 to 30 characters
 	Name string `json:"name" binding:"required,gte=3,lte=30"`
-}
+} //@name CreateGuildRequest
 
 // CreateGuild creates a guild
+// CreateGuild godoc
+// @Tags Guilds
+// @Summary Create Guild
+// @Accepts  json
+// @Produce  json
+// @Param request body createGuildRequest true "Create Guild"
+// @Success 201 {array} model.GuildResponse
+// @Router /guilds [post]
 func (h *Handler) CreateGuild(c *gin.Context) {
 	var req createGuildRequest
 
@@ -156,12 +178,24 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 // If Icon is not nil then the guild kept its old one.
 // If both are nil then the icon got reset.
 type editGuildRequest struct {
-	Name  string                `form:"name" binding:"required,gte=3,lte=30"`
-	Image *multipart.FileHeader `form:"image" binding:"omitempty"`
-	Icon  *string               `form:"icon" binding:"omitempty"`
-}
+	// Guild Name. 3 to 30 characters
+	Name string `form:"name" binding:"required,gte=3,lte=30"`
+	// image/png or image/jpeg
+	Image *multipart.FileHeader `form:"image" binding:"omitempty" swaggertype:"string" format:"binary"`
+	// The old guild icon url if no new image is selected. Set null the guild icon should be reset
+	Icon *string `form:"icon" binding:"omitempty"`
+} //@name EditGuildRequest
 
 // EditGuild edits the given guild
+// EditGuild godoc
+// @Tags Guilds
+// @Summary Edit Guild
+// @Accepts  mpfd
+// @Produce  json
+// @Param request body editGuildRequest true "Edit Guild"
+// @Param guildId path string true "Guild ID"
+// @Success 200 {object} model.Success
+// @Router /guilds/{guildId} [put]
 func (h *Handler) EditGuild(c *gin.Context) {
 	var req editGuildRequest
 
@@ -248,6 +282,14 @@ func (h *Handler) EditGuild(c *gin.Context) {
 // GetInvite creates an invite for the given channel
 // The isPermanent query parameter specifies if the invite
 // should not be deleted after it got used
+// GetInvite godoc
+// @Tags Guilds
+// @Summary Get Guild Invite
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Param isPermanent query boolean false "Is Permanent"
+// @Success 200 string link
+// @Router /guilds/{guildId} [get]
 func (h *Handler) GetInvite(c *gin.Context) {
 	guildId := c.Param("guildId")
 	permanent := c.Query("isPermanent")
@@ -301,6 +343,13 @@ func (h *Handler) GetInvite(c *gin.Context) {
 }
 
 // DeleteGuildInvites removes all permanent invites from the given guild
+// DeleteGuildInvites godoc
+// @Tags Guilds
+// @Summary Delete all permanent invite links
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Success 200 {object} model.Success
+// @Router /guilds/{guildId}/invite [delete]
 func (h *Handler) DeleteGuildInvites(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	guildId := c.Param("guildId")
@@ -341,9 +390,16 @@ func (h *Handler) DeleteGuildInvites(c *gin.Context) {
 
 type joinReq struct {
 	Link string `json:"link" binding:"required"`
-}
+} //@name JoinRequest
 
 // JoinGuild adds the current user to invited guild
+// JoinGuild godoc
+// @Tags Guilds
+// @Summary Join Guild
+// @Produce  json
+// @Param request body joinReq true "Join Guild"
+// @Success 200 {object} model.GuildResponse
+// @Router /guilds/join [post]
 func (h *Handler) JoinGuild(c *gin.Context) {
 	var req joinReq
 
@@ -440,6 +496,13 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 }
 
 // LeaveGuild leaves the given guild
+// LeaveGuild godoc
+// @Tags Guilds
+// @Summary Leave Guild
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Success 200 {object} model.Success
+// @Router /guilds/{guildId} [delete]
 func (h *Handler) LeaveGuild(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	guildId := c.Param("guildId")
@@ -477,6 +540,13 @@ func (h *Handler) LeaveGuild(c *gin.Context) {
 }
 
 // DeleteGuild deletes the given guild
+// DeleteGuild godoc
+// @Tags Guilds
+// @Summary Delete Guild
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Success 200 {object} model.Success
+// @Router /guilds/{guildId}/delete [delete]
 func (h *Handler) DeleteGuild(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	guildId := c.Param("guildId")

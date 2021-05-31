@@ -14,6 +14,13 @@ import (
  */
 
 // GuildChannels returns the given guild's channels
+// GuildChannels godoc
+// @Tags Channels
+// @Summary Get Guild Channels
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Success 200 {array} model.ChannelResponse
+// @Router /channels/{guildId} [get]
 func (h *Handler) GuildChannels(c *gin.Context) {
 	guildId := c.Param("id")
 	userId := c.MustGet("userId").(string)
@@ -58,12 +65,23 @@ func (h *Handler) GuildChannels(c *gin.Context) {
 // IsPublic and Members do not need to be specified if you want
 // to create a public channel
 type channelReq struct {
-	Name     string   `json:"name" binding:"required,gte=3,lte=30"`
-	IsPublic *bool    `json:"isPublic"`
-	Members  []string `json:"members" binding:"omitempty"`
-}
+	// Channel Name. 3 to 30 character
+	Name string `json:"name" binding:"required,gte=3,lte=30"`
+	// Default is true
+	IsPublic *bool `json:"isPublic"`
+	// Array of memberIds
+	Members []string `json:"members" binding:"omitempty"`
+} //@name ChannelRequest
 
 // CreateChannel creates a channel for the given guild param
+// CreateChannel godoc
+// @Tags Channels
+// @Summary Create Channel
+// @Accepts json
+// @Produce  json
+// @Param guildId path string true "Guild ID"
+// @Success 200 {array} model.ChannelResponse
+// @Router /channels/{guildId} [post]
 func (h *Handler) CreateChannel(c *gin.Context) {
 	var req channelReq
 
@@ -161,6 +179,13 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 
 // PrivateChannelMembers returns the ids of all members
 // that are part of the channel
+// PrivateChannelMembers godoc
+// @Tags Channels
+// @Summary Get Members of the given Channel
+// @Produce  json
+// @Param channelId path string true "Channel ID"
+// @Success 200 {array} string
+// @Router /channels/{channelId}/members [get]
 func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 	channelId := c.Param("id")
 	userId := c.MustGet("userId").(string)
@@ -217,6 +242,12 @@ func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 }
 
 // DirectMessages returns a list of the current users DMs
+// DirectMessages godoc
+// @Tags Channels
+// @Summary Get User's DMs
+// @Produce  json
+// @Success 200 {array} model.DirectMessage
+// @Router /channels/me/dm [get]
 func (h *Handler) DirectMessages(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
@@ -244,6 +275,13 @@ func (h *Handler) DirectMessages(c *gin.Context) {
 
 // GetOrCreateDM gets the DM with the given member and creates it
 // if it does not already exist
+// DirectMessages godoc
+// @Tags Channels
+// @Summary Get or Create DM
+// @Produce  json
+// @Param channelId path string true "Member ID"
+// @Success 200 {object} model.DirectMessage
+// @Router /channels/{channelId}/dm [post]
 func (h *Handler) GetOrCreateDM(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("id")
@@ -334,6 +372,15 @@ func toDMChannel(member *model.User, channelId string, userId string) model.Dire
 }
 
 // EditChannel edits the specified channel
+// EditChannel godoc
+// @Tags Channels
+// @Summary Edit Channel
+// @Accepts json
+// @Produce  json
+// @Param channelId path string true "Channel ID"
+// @Param request body channelReq true "Edit Channel"
+// @Success 200 {object} model.Success
+// @Router /channels/{channelId} [put]
 func (h *Handler) EditChannel(c *gin.Context) {
 	var req channelReq
 
@@ -454,6 +501,13 @@ func difference(a, b []string) []string {
 }
 
 // DeleteChannel removes the given channel from the guild
+// DeleteChannel godoc
+// @Tags Channels
+// @Summary Delete Channel
+// @Produce  json
+// @Param id path string true "Channel ID"
+// @Success 200 {object} model.Success
+// @Router /channels/{id} [delete]
 func (h *Handler) DeleteChannel(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	channelId := c.Param("id")
@@ -513,6 +567,13 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 }
 
 // CloseDM closes the DM on the current users side
+// CloseDM godoc
+// @Tags Channels
+// @Summary Close DM
+// @Produce  json
+// @Param id path string true "DM Channel ID"
+// @Success 200 {object} model.Success
+// @Router /channels/{id}/dm [delete]
 func (h *Handler) CloseDM(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	channelId := c.Param("id")

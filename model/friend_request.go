@@ -10,5 +10,6 @@ type FriendRequest struct {
 	Id       string `json:"id"`
 	Username string `json:"username"`
 	Image    string `json:"image"`
-	Type     int    `json:"type"`
-}
+	// 1: Incoming, 0: Outgoing
+	Type int `json:"type" enums:"0,1"`
+} //@name FriendRequest

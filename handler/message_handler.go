@@ -17,6 +17,14 @@ import (
 
 // GetMessages returns messages for the given channel
 // It returns the most recent 35 or the ones after the given cursor
+// GetMessages godoc
+// @Tags Messages
+// @Summary Get Channel Messages
+// @Produce  json
+// @Param channelId path string true "Channel ID"
+// @Param cursor query string false "Cursor Pagination using the createdAt field"
+// @Success 200 {array} model.MessageResponse
+// @Router /messages/{channelId} [get]
 func (h *Handler) GetMessages(c *gin.Context) {
 	channelId := c.Param("channelId")
 	userId := c.MustGet("userId").(string)
@@ -69,11 +77,22 @@ func (h *Handler) GetMessages(c *gin.Context) {
 // messageRequest contains all field required to create a message.
 // Either text or file must be provided
 type messageRequest struct {
-	Text *string               `form:"text" binding:"omitempty,lte=2000"`
-	File *multipart.FileHeader `form:"file" binding:"omitempty"`
-}
+	// Maximum 2000 characters
+	Text *string `form:"text" binding:"omitempty,lte=2000"`
+	// image/* or audio/*
+	File *multipart.FileHeader `form:"file" binding:"omitempty" swaggertype:"string" format:"binary"`
+} //@name MessageRequest
 
 // CreateMessage creates a message in the given channel
+// CreateMessage godoc
+// @Tags Messages
+// @Summary Create Messages
+// @Accepts  mpfd
+// @Produce  json
+// @Param channelId path string true "Channel ID"
+// @Param request body messageRequest true "Create Message"
+// @Success 200 {object} model.Success
+// @Router /messages/{channelId} [post]
 func (h *Handler) CreateMessage(c *gin.Context) {
 	channelId := c.Param("channelId")
 	userId := c.MustGet("userId").(string)
@@ -191,6 +210,15 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 }
 
 // EditMessage edits the given message with the given text
+// EditMessage godoc
+// @Tags Messages
+// @Summary Edit Messages
+// @Accepts  json
+// @Produce  json
+// @Param messageId path string true "Message ID"
+// @Param request body messageRequest true "Edit Message"
+// @Success 200 {object} model.Success
+// @Router /messages/{messageId} [put]
 func (h *Handler) EditMessage(c *gin.Context) {
 	messageId := c.Param("messageId")
 	userId := c.MustGet("userId").(string)
@@ -255,6 +283,13 @@ func (h *Handler) EditMessage(c *gin.Context) {
 }
 
 // DeleteMessage deletes the given message
+// DeleteMessage godoc
+// @Tags Messages
+// @Summary Delete Messages
+// @Produce  json
+// @Param messageId path string true "Message ID"
+// @Success 200 {object} model.Success
+// @Router /messages/{messageId} [delete]
 func (h *Handler) DeleteMessage(c *gin.Context) {
 	messageId := c.Param("messageId")
 	userId := c.MustGet("userId").(string)

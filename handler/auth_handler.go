@@ -15,12 +15,23 @@ import (
  */
 
 type registerReq struct {
-	Email    string `json:"email" binding:"required,email"`
+	// Must be unique
+	Email string `json:"email" binding:"required,email"`
+	// Min 3, max 30 characters.
 	Username string `json:"username" binding:"required,gte=3,lte=30"`
+	// Min 6, max 150 characters.
 	Password string `json:"password" binding:"required,gte=6,lte=150"`
-}
+} //@name RegisterRequest
 
 // Register handler creates a new user
+// Register godoc
+// @Tags Account
+// @Summary Create an Account
+// @Accept  json
+// @Produce  json
+// @Param account body registerReq true "Create account"
+// @Success 201 {object} model.User
+// @Router /account/register [post]
 func (h *Handler) Register(c *gin.Context) {
 	var req registerReq
 
@@ -51,11 +62,21 @@ func (h *Handler) Register(c *gin.Context) {
 }
 
 type loginReq struct {
-	Email    string `json:"email" binding:"required,email"`
+	// Must be unique
+	Email string `json:"email" binding:"required,email"`
+	// Min 6, max 150 characters.
 	Password string `json:"password" binding:"required,gte=6,lte=30"`
-}
+} //@name LoginRequest
 
 // Login used to authenticate existent user
+// Login godoc
+// @Tags Account
+// @Summary User Login
+// @Accept  json
+// @Produce  json
+// @Param account body loginReq true "Login account"
+// @Success 200 {object} model.User
+// @Router /account/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req loginReq
 
@@ -84,6 +105,14 @@ func (h *Handler) Login(c *gin.Context) {
 }
 
 // Logout handler removes the current session
+// Logout godoc
+// @Tags Account
+// @Summary User Logout
+// @Accept  json
+// @Produce  json
+// @Param account body loginReq true "Login account"
+// @Success 200 {object} model.Success
+// @Router /account/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
 	c.Set("user", nil)
 
@@ -103,9 +132,17 @@ func (h *Handler) Logout(c *gin.Context) {
 
 type forgotRequest struct {
 	Email string `json:"email" binding:"required,email"`
-}
+} //@name ForgotPasswordRequest
 
 // ForgotPassword sends a password reset email to the requested email
+// ForgotPassword godoc
+// @Tags Account
+// @Summary Forgot Password Request
+// @Accept  json
+// @Produce  json
+// @Param email body forgotRequest true "Forgot Password"
+// @Success 200 {object} model.Success
+// @Router /account/forgot-password [post]
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req forgotRequest
 	if valid := bindData(c, &req); !valid {
@@ -142,12 +179,23 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 }
 
 type resetRequest struct {
-	Token           string `json:"token" binding:"required"`
-	Password        string `json:"newPassword" binding:"required"`
+	// The from the email provided token.
+	Token string `json:"token" binding:"required"`
+	// Min 6, max 150 characters.
+	Password string `json:"newPassword" binding:"required"`
+	// Must be the same as the password value.
 	ConfirmPassword string `json:"confirmNewPassword" binding:"required"`
-}
+} //@name ResetPasswordRequest
 
 // ResetPassword resets the users password with the provided token
+// ResetPassword godoc
+// @Tags Account
+// @Summary Reset Password
+// @Accept  json
+// @Produce  json
+// @Param request body resetRequest true "Reset Password"
+// @Success 200 {object} model.User
+// @Router /account/reset-password [post]
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req resetRequest
 
