@@ -6,7 +6,6 @@ import (
 	"github.com/sentrionic/valkyrie/model"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -32,7 +31,7 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
 	CheckOrigin: func(r *http.Request) bool {
-		return r.Header.Get("Origin") == os.Getenv("CORS_ORIGIN")
+		return true
 	},
 }
 

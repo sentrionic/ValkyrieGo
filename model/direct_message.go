@@ -13,5 +13,5 @@ type DMUser struct {
 	Username string `json:"username"`
 	Image    string `json:"image"`
 	IsOnline bool   `json:"isOnline"`
-	IsFriend bool   `json:"IsFriend"`
+	IsFriend bool   `json:"isFriend"`
 }
