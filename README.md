@@ -29,7 +29,8 @@ A [Discord](https://discord.com) backend clone written in Golang.
 - PostgreSQL
 - Redis
 - S3 for storing files and GMail for sending emails
-
+- [React Client](https://github.com/sentrionic/Valkyrie/tree/websocket)
+- [Flutter Application](https://github.com/sentrionic/ValkyrieApp/tree/websocket)
 ---
 
 ## Installation
@@ -61,3 +62,8 @@ A [Discord](https://discord.com) backend clone written in Golang.
         GMAIL_PASSWORD=GMAIL_PASSWORD
 
 5. Run `go run github.com/sentrionic/valkyrie` to run the server
+
+## Endpoints
+
+Once the server is running go to `localhost:8080/swagger/index.html` to see all the HTTP endpoints
+and `localhost:8080` for all the websocket events.
