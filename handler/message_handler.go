@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	gonanoid "github.com/matoous/go-nanoid"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
@@ -117,7 +118,14 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 	// Either text or file must be provided
 	if req.Text == nil && req.File == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Either a message pr a file is required",
+			"error": "Either a message or a file is required",
+		})
+		return
+	}
+
+	if req.Text != nil && len(*req.Text) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Message must not be empty",
 		})
 		return
 	}
@@ -145,16 +153,30 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 			return
 		}
 
-		attachment, err := h.messageService.UploadFile(req.File, channel.ID)
+		// Prevent file upload on the life server.
+		// Remove and uncomment if you do want upload
+		var attachment *model.Attachment
+		if gin.Mode() == "release" {
+			id, _ := gonanoid.Nanoid(20)
+			attachment = &model.Attachment{
+				ID:       id,
+				Url:      fmt.Sprintf("https://picsum.photos/seed/%s/600", id),
+				FileType: "image/jpeg",
+				Filename: id,
+			}
+		} else {
+			attachment, err = h.messageService.UploadFile(req.File, channel.ID)
 
-		if err != nil {
-			fmt.Println(err)
-			c.JSON(500, gin.H{
-				"error": err,
-			})
-			return
+			if err != nil {
+				fmt.Println(err)
+				c.JSON(500, gin.H{
+					"error": err,
+				})
+				return
+			}
 		}
 
+		// attachment, err := h.messageService.UploadFile(req.File, channel.ID)
 		message.Attachment = attachment
 	}
 

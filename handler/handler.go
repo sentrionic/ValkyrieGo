@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	_ "github.com/sentrionic/valkyrie/docs"
 	"github.com/sentrionic/valkyrie/handler/middleware"
@@ -51,6 +52,7 @@ func NewHandler(c *Config) {
 		MaxBodyBytes:   c.MaxBodyBytes,
 	}
 
+	c.R.Use(static.Serve("/", static.LocalFile("./static", true)))
 	c.R.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
 
 	c.R.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
