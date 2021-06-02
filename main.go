@@ -24,7 +24,7 @@ func main() {
 	log.Println("Starting server...")
 
 	// Load dev env from .env file
-	if gin.Mode() != "release" {
+	if gin.Mode() != gin.ReleaseMode {
 		err := godotenv.Load()
 		if err != nil {
 			log.Fatalln("Error loading .env file")

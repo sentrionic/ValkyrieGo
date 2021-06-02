@@ -228,6 +228,9 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 
 // setUserSession saves the users ID in the session
 func setUserSession(c *gin.Context, id string) {
+	if gin.Mode() == gin.TestMode {
+		return
+	}
 	session := sessions.Default(c)
 	session.Set("userId", id)
 	if err := session.Save(); err != nil {

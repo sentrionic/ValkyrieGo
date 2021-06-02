@@ -91,7 +91,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	password := ""
 
 	// Production url is of form redis://:password@host:port
-	if gin.Mode() == "release" {
+	if gin.Mode() == gin.ReleaseMode {
 		opt, err := gredis.ParseURL(redisURL)
 		if err != nil {
 			panic(err)
@@ -109,7 +109,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	store.Options(sessions.Options{
 		Domain:   domain,
 		MaxAge:   60 * 60 * 24 * 7, // 7 days
-		Secure:   gin.Mode() == "release",
+		Secure:   gin.Mode() == gin.ReleaseMode,
 		HttpOnly: true,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,

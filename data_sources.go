@@ -56,7 +56,7 @@ func initDS() (*dataSources, error) {
 	var opt *redis.Options
 
 	// Production url is of form redis://:password@host:port
-	if gin.Mode() == "release" {
+	if gin.Mode() == gin.ReleaseMode {
 		opt, err = redis.ParseURL(redisURL)
 		if err != nil {
 			panic(err)

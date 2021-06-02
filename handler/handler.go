@@ -53,7 +53,10 @@ func NewHandler(c *Config) {
 	}
 
 	c.R.Use(static.Serve("/", static.LocalFile("./static", true)))
-	c.R.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
+
+	if gin.Mode() != gin.TestMode {
+		c.R.Use(middleware.Timeout(c.TimeoutDuration, apperrors.NewServiceUnavailable()))
+	}
 
 	c.R.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -66,7 +69,9 @@ func NewHandler(c *Config) {
 	ag.POST("/forgot-password", h.ForgotPassword)
 	ag.POST("/reset-password", h.ResetPassword)
 
-	ag.Use(middleware.AuthUser())
+	if gin.Mode() != gin.TestMode {
+		ag.Use(middleware.AuthUser())
+	}
 
 	ag.GET("", h.Me)
 	ag.PUT("", h.Edit)

@@ -156,7 +156,7 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		// Prevent file upload on the life server.
 		// Remove and uncomment if you do want upload
 		var attachment *model.Attachment
-		if gin.Mode() == "release" {
+		if gin.Mode() == gin.ReleaseMode {
 			id, _ := gonanoid.Nanoid(20)
 			attachment = &model.Attachment{
 				ID:       id,
