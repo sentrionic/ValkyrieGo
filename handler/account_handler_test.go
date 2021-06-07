@@ -188,7 +188,7 @@ func TestEdit(t *testing.T) {
 		mockUserService.
 			On("UpdateAccount", updateArgs...).
 			Run(func(args mock.Arguments) {
-				userArg := args.Get(0).(*model.User) // arg 0 is context, arg 1 is *User
+				userArg := args.Get(0).(*model.User)
 				userArg.Image = dbImageURL
 			}).
 			Return(nil)
@@ -206,6 +206,23 @@ func TestEdit(t *testing.T) {
 
 	t.Run("Update failure", func(t *testing.T) {
 		rr := httptest.NewRecorder()
+
+		uid, _ := service.GenerateId()
+		user := &model.User{}
+		user.ID = uid
+
+		router := gin.Default()
+		router.Use(func(c *gin.Context) {
+			c.Set("userId", uid)
+		})
+
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("Get", uid).Return(user, nil)
+
+		NewHandler(&Config{
+			R:           router,
+			UserService: mockUserService,
+		})
 
 		newName := "Sen"
 		newEmail := "sen@example.com"

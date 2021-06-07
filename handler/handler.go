@@ -106,7 +106,9 @@ func NewHandler(c *Config) {
 
 	// Create a channels group
 	cg := c.R.Group("api/channels")
-	cg.Use(middleware.AuthUser())
+	if gin.Mode() != gin.TestMode {
+		cg.Use(middleware.AuthUser())
+	}
 
 	// Route parameters cause conflicts so they have to use the same parameter name
 	cg.GET("/:id", h.GuildChannels)                 // id -> guildId
