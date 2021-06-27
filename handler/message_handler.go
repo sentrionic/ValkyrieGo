@@ -99,6 +99,14 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	channel, err := h.channelService.Get(channelId)
 
+	if err != nil {
+		e := apperrors.NewNotFound("channel", channelId)
+		c.JSON(e.Status(), gin.H{
+			"error": e.Message,
+		})
+		return
+	}
+
 	// Check if the user has access to said channel
 	err = h.channelService.IsChannelMember(channel, userId)
 

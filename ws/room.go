@@ -58,9 +58,7 @@ func (room *Room) registerClientInRoom(client *Client) {
 
 // unregisterClientInRoom removes the client from the room
 func (room *Room) unregisterClientInRoom(client *Client) {
-	if _, ok := room.clients[client]; ok {
-		delete(room.clients, client)
-	}
+	delete(room.clients, client)
 }
 
 // broadcastToClientsInRoom sends the given message to all members in the room

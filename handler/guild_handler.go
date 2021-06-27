@@ -169,8 +169,8 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 		})
 		return
 	}
+
 	c.JSON(http.StatusCreated, guild.SerializeGuild(channel.ID))
-	return
 }
 
 // editGuildRequest specifies the form to edit the guild.
@@ -276,7 +276,6 @@ func (h *Handler) EditGuild(c *gin.Context) {
 	h.socketService.EmitEditGuild(guild)
 
 	c.JSON(http.StatusCreated, true)
-	return
 }
 
 // GetInvite creates an invite for the given channel
@@ -333,6 +332,13 @@ func (h *Handler) GetInvite(c *gin.Context) {
 	ctx := context.Background()
 	link, err := h.guildService.GenerateInviteLink(ctx, guild.ID, isPermanent)
 
+	if err != nil {
+		e := apperrors.NewInternal()
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
+	}
+
 	if isPermanent {
 		guild.InviteLinks = append(guild.InviteLinks, link)
 		_ = h.guildService.UpdateGuild(guild)
@@ -385,7 +391,6 @@ func (h *Handler) DeleteGuildInvites(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, true)
-	return
 }
 
 type joinReq struct {
@@ -492,7 +497,6 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 	channel, _ := h.guildService.GetDefaultChannel(guildId)
 
 	c.JSON(http.StatusCreated, guild.SerializeGuild(channel.ID))
-	return
 }
 
 // LeaveGuild leaves the given guild

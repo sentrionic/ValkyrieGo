@@ -145,9 +145,7 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		}
 
 		// Create private channel members
-		for _, m := range *members {
-			channel.PCMembers = append(channel.PCMembers, m)
-		}
+		channel.PCMembers = append(channel.PCMembers, *members...)
 	}
 
 	if err := h.channelService.CreateChannel(&channel); err != nil {
@@ -174,7 +172,6 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 	h.socketService.EmitNewChannel(guildId, &response)
 
 	c.JSON(http.StatusCreated, response)
-	return
 }
 
 // PrivateChannelMembers returns the ids of all members
@@ -482,7 +479,6 @@ func (h *Handler) EditChannel(c *gin.Context) {
 	h.socketService.EmitEditChannel(*channel.GuildID, &response)
 
 	c.JSON(http.StatusCreated, true)
-	return
 }
 
 // difference returns the elements in `a` that aren't in `b`.
@@ -563,7 +559,6 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 	h.socketService.EmitDeleteChannel(channel)
 
 	c.JSON(http.StatusCreated, true)
-	return
 }
 
 // CloseDM closes the DM on the current users side

@@ -246,6 +246,17 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 		authUser.Friends = append(authUser.Friends, *member)
 		member.Friends = append(member.Friends, *authUser)
 		err = h.friendService.SaveRequests(member)
+
+		if err != nil {
+			log.Printf("Unable to accept friends request from user: %v\n%v", memberId, err)
+			e := apperrors.NewBadRequest("Unable to accept the request")
+
+			c.JSON(e.Status(), gin.H{
+				"error": e,
+			})
+			return
+		}
+
 		err = h.friendService.SaveRequests(authUser)
 
 		if err != nil {

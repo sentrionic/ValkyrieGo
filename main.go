@@ -59,7 +59,7 @@ func main() {
 	log.Printf("Listening on port %v\n", srv.Addr)
 
 	// Wait for kill signal of channel
-	quit := make(chan os.Signal)
+	quit := make(chan os.Signal, 1)
 
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 

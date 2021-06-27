@@ -62,9 +62,7 @@ func (hub *Hub) registerClient(client *Client) {
 }
 
 func (hub *Hub) unregisterClient(client *Client) {
-	if _, ok := hub.clients[client]; ok {
-		delete(hub.clients, client)
-	}
+	delete(hub.clients, client)
 }
 
 func (hub *Hub) broadcastToClients(message []byte) {

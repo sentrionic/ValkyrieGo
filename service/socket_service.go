@@ -212,6 +212,10 @@ func (s *socketService) EmitNewDMNotification(channelId string, user *model.User
 		Data:   response,
 	})
 
+	if err != nil {
+		log.Printf("error marshalling notification: %v\n", err)
+	}
+
 	pushToTop, err := json.Marshal(model.WebsocketMessage{
 		Action: ws.PushToTopAction,
 		Data:   channelId,
@@ -259,6 +263,10 @@ func (s *socketService) EmitNewNotification(guildId, channelId string) {
 		Action: ws.NewNotificationAction,
 		Data:   channelId,
 	})
+
+	if err != nil {
+		log.Printf("error marshalling notification: %v\n", err)
+	}
 
 	s.Hub.BroadcastToRoom(notification, guildId)
 }

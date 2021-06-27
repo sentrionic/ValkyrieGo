@@ -252,9 +252,7 @@ func (client *Client) handleLeaveGuildMessage(message model.ReceivedMessage) {
 // handleLeaveRoomMessage leaves the room
 func (client *Client) handleLeaveRoomMessage(message model.ReceivedMessage) {
 	room := client.hub.findRoomById(message.Room)
-	if _, ok := client.rooms[room]; ok {
-		delete(client.rooms, room)
-	}
+	delete(client.rooms, room)
 
 	if room != nil {
 		room.unregister <- client

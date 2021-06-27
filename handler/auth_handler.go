@@ -127,7 +127,6 @@ func (h *Handler) Logout(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, true)
-	return
 }
 
 type forgotRequest struct {
@@ -175,7 +174,6 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, true)
-	return
 }
 
 type resetRequest struct {
@@ -223,7 +221,6 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	setUserSession(c, user.ID)
 
 	c.JSON(http.StatusOK, user)
-	return
 }
 
 // setUserSession saves the users ID in the session
