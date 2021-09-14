@@ -7,8 +7,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/sentrionic/valkyrie/model"
-	_ "image/jpeg"
-	_ "image/png"
 	"time"
 )
 

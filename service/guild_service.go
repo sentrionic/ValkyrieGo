@@ -17,7 +17,7 @@ type guildService struct {
 	ChannelRepository model.ChannelRepository
 }
 
-// GSConfig will hold repositories that will eventually be injected into this
+// GSConfig will hold repositories that will eventually be injected into
 // this service layer
 type GSConfig struct {
 	UserRepository    model.UserRepository

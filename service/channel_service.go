@@ -12,7 +12,7 @@ type channelService struct {
 	GuildRepository   model.GuildRepository
 }
 
-// CSConfig will hold repositories that will eventually be injected into this
+// CSConfig will hold repositories that will eventually be injected into
 // this service layer
 type CSConfig struct {
 	ChannelRepository model.ChannelRepository
@@ -126,15 +126,15 @@ func (c *channelService) IsChannelMember(channel *model.Channel, userId string) 
 				return apperrors.NewAuthorization("Not Authorized")
 			}
 			return nil
-			// Channel is private
-		} else {
-			for _, member := range channel.PCMembers {
-				if member.ID == userId {
-					return nil
-				}
-			}
-			return apperrors.NewAuthorization("Not Authorized")
 		}
+		// Channel is private
+		for _, member := range channel.PCMembers {
+			if member.ID == userId {
+				return nil
+			}
+		}
+		return apperrors.NewAuthorization("Not Authorized")
+
 		// Check if user has access to the channel
 	} else {
 		member, err := c.GuildRepository.GetMember(userId, *channel.GuildID)

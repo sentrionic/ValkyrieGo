@@ -1,15 +1,20 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
+	"github.com/sentrionic/valkyrie/model/fixture"
 	"github.com/sentrionic/valkyrie/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -17,19 +22,14 @@ import (
 	"testing"
 )
 
-func TestMe(t *testing.T) {
+func TestHandler_Me(t *testing.T) {
 	// Setup
 	gin.SetMode(gin.TestMode)
 
 	t.Run("Success", func(t *testing.T) {
 		uid, _ := service.GenerateId()
 
-		mockUserResp := &model.User{
-			Email:    "bob@bob.com",
-			Username: "Bobby",
-			Image:    "image",
-			IsOnline: false,
-		}
+		mockUserResp := fixture.GetMockUser()
 		mockUserResp.ID = uid
 
 		mockUserService := new(mocks.UserService)
@@ -38,10 +38,15 @@ func TestMe(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		// use a middleware to set context for test
-		// the only claims we care about in this test
-		// is the UID
 		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		router.Use(func(c *gin.Context) {
+			session := sessions.Default(c)
+			session.Set("userId", uid)
+		})
+
 		router.Use(func(c *gin.Context) {
 			c.Set("userId", uid)
 		})
@@ -61,43 +66,25 @@ func TestMe(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
-		mockUserService.AssertExpectations(t) // assert that UserService.Get was called
-	})
-
-	t.Run("NoContextUser", func(t *testing.T) {
-		mockUserService := new(mocks.UserService)
-		mockUserService.On("Get", mock.Anything).Return(nil, nil)
-
-		// a response recorder for getting written http response
-		rr := httptest.NewRecorder()
-
-		// do not append user to context
-		router := gin.Default()
-		NewHandler(&Config{
-			R:           router,
-			UserService: mockUserService,
-		})
-
-		request, err := http.NewRequest(http.MethodGet, "/api/account", nil)
-		assert.NoError(t, err)
-
-		router.ServeHTTP(rr, request)
-
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-		mockUserService.AssertNotCalled(t, "Get", mock.Anything)
+		mockUserService.AssertExpectations(t)
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
 		uid, _ := service.GenerateId()
 		mockUserService := new(mocks.UserService)
-		mockUserService.On("Get", uid).Return(nil, fmt.Errorf("Some error down call chain"))
+		mockUserService.On("Get", uid).Return(nil, fmt.Errorf("some error down call chain"))
 
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
 		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
 		router.Use(func(c *gin.Context) {
 			c.Set("userId", uid)
+			session := sessions.Default(c)
+			session.Set("userId", uid)
 		})
 
 		NewHandler(&Config{
@@ -121,47 +108,57 @@ func TestMe(t *testing.T) {
 		assert.Equal(t, respBody, rr.Body.Bytes())
 		mockUserService.AssertExpectations(t) // assert that UserService.Get was called
 	})
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		uid, _ := service.GenerateId()
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("Get", uid).Return(nil, nil)
+
+		rr := httptest.NewRecorder()
+
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		NewHandler(&Config{
+			R:           router,
+			UserService: mockUserService,
+		})
+
+		request, err := http.NewRequest(http.MethodGet, "/api/account", nil)
+		assert.NoError(t, err)
+
+		router.ServeHTTP(rr, request)
+
+		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		mockUserService.AssertNotCalled(t, "Get", uid)
+	})
 }
 
-func TestEdit(t *testing.T) {
+func TestHandler_EditAccount(t *testing.T) {
 	// Setup
 	gin.SetMode(gin.TestMode)
 
 	uid, _ := service.GenerateId()
-	user := &model.User{}
-	user.ID = uid
+	mockUser := fixture.GetMockUser()
+	mockUser.ID = uid
 
-	router := gin.Default()
-	router.Use(func(c *gin.Context) {
-		c.Set("userId", uid)
-	})
+	t.Run("Unauthorized", func(t *testing.T) {
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("Get", uid).Return(mockUser, nil)
 
-	mockUserService := new(mocks.UserService)
-	mockUserService.On("Get", uid).Return(user, nil)
+		NewHandler(&Config{
+			R:           router,
+			UserService: mockUserService,
+		})
 
-	NewHandler(&Config{
-		R:           router,
-		UserService: mockUserService,
-	})
-
-	t.Run("Data binding error", func(t *testing.T) {
 		rr := httptest.NewRecorder()
 
-		form := url.Values{}
-		form.Add("email", "notanemail")
-		request, _ := http.NewRequest(http.MethodPut, "/api/account", strings.NewReader(form.Encode()))
-
-		router.ServeHTTP(rr, request)
-
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
-		mockUserService.AssertNotCalled(t, "UpdateAccount")
-	})
-
-	t.Run("Update success", func(t *testing.T) {
-		rr := httptest.NewRecorder()
-
-		newName := "Sen"
-		newEmail := "sen@example.com"
+		newName := fixture.Username()
+		newEmail := fixture.Email()
 
 		form := url.Values{}
 		form.Add("username", newName)
@@ -170,23 +167,58 @@ func TestEdit(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPut, "/api/account", strings.NewReader(form.Encode()))
 		request.Form = form
 
-		userToUpdate := &model.User{
-			Username: newName,
-			Email:    newEmail,
-		}
-		userToUpdate.ID = user.ID
+		router.ServeHTTP(rr, request)
 
-		updateArgs := mock.Arguments{
-			userToUpdate,
+		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		mockUserService.AssertNotCalled(t, "UpdateAccount")
+	})
+
+	t.Run("UpdateAccount success", func(t *testing.T) {
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		router.Use(func(c *gin.Context) {
+			c.Set("userId", uid)
+			session := sessions.Default(c)
+			session.Set("userId", uid)
+		})
+
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("Get", uid).Return(mockUser, nil)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
+		rr := httptest.NewRecorder()
+
+		newName := fixture.Username()
+		newEmail := fixture.Email()
+
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		_ = writer.WriteField("username", newName)
+		_ = writer.WriteField("email", newEmail)
+
+		_ = writer.Close()
+
+		request, _ := http.NewRequest(http.MethodPut, "/api/account", body)
+		request.Header.Set("Content-Type", writer.FormDataContentType())
+
+		mockUser.Username = newName
+		mockUser.Email = newEmail
+
+		UpdateAccountArgs := mock.Arguments{
+			mockUser,
 		}
 
-		dbImageURL := "https://jacobgoodwin.me/static/696292a38f493a4283d1a308e4a11732/84d81/Profile.jpg"
+		dbImageURL := "https://website.com/696292a38f493a4283d1a308e4a11732/84d81/Profile.jpg"
 
 		mockUserService.
-			On("IsEmailAlreadyInUse", newEmail).Return(false)
-
-		mockUserService.
-			On("UpdateAccount", updateArgs...).
+			On("UpdateAccount", UpdateAccountArgs...).
 			Run(func(args mock.Arguments) {
 				userArg := args.Get(0).(*model.User)
 				userArg.Image = dbImageURL
@@ -195,62 +227,47 @@ func TestEdit(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
-		userToUpdate.Image = dbImageURL
-		respBody, _ := json.Marshal(userToUpdate)
+		mockUser.Image = dbImageURL
+		respBody, _ := json.Marshal(mockUser)
 
 		assert.Equal(t, http.StatusOK, rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
-		mockUserService.AssertCalled(t, "IsEmailAlreadyInUse", newEmail)
-		mockUserService.AssertCalled(t, "UpdateAccount", updateArgs...)
+		mockUserService.AssertCalled(t, "UpdateAccount", UpdateAccountArgs...)
 	})
 
-	t.Run("Update failure", func(t *testing.T) {
-		rr := httptest.NewRecorder()
-
-		uid, _ := service.GenerateId()
-		user := &model.User{}
-		user.ID = uid
-
+	t.Run("UpdateAccount Failure", func(t *testing.T) {
 		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
 		router.Use(func(c *gin.Context) {
 			c.Set("userId", uid)
+			session := sessions.Default(c)
+			session.Set("userId", uid)
 		})
 
 		mockUserService := new(mocks.UserService)
-		mockUserService.On("Get", uid).Return(user, nil)
+		mockUserService.On("Get", uid).Return(mockUser, nil)
 
 		NewHandler(&Config{
-			R:           router,
-			UserService: mockUserService,
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
 		})
 
-		newName := "Sen"
-		newEmail := "sen@example.com"
+		rr := httptest.NewRecorder()
 
 		form := url.Values{}
-		form.Add("username", newName)
-		form.Add("email", newEmail)
+		form.Add("username", mockUser.Username)
+		form.Add("email", mockUser.Email)
 
 		request, _ := http.NewRequest(http.MethodPut, "/api/account", strings.NewReader(form.Encode()))
 		request.Form = form
 
-		userToUpdate := &model.User{
-			Username: newName,
-			Email:    newEmail,
-		}
-		userToUpdate.ID = user.ID
-
-		updateArgs := mock.Arguments{
-			userToUpdate,
-		}
-
 		mockError := apperrors.NewInternal()
 
 		mockUserService.
-			On("IsEmailAlreadyInUse", newEmail).Return(false)
-
-		mockUserService.
-			On("UpdateAccount", updateArgs...).
+			On("UpdateAccount", mockUser).
 			Return(mockError)
 
 		router.ServeHTTP(rr, request)
@@ -261,35 +278,77 @@ func TestEdit(t *testing.T) {
 
 		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
-		mockUserService.AssertCalled(t, "IsEmailAlreadyInUse", newEmail)
-		mockUserService.AssertCalled(t, "UpdateAccount", updateArgs...)
+		mockUserService.AssertCalled(t, "UpdateAccount", mockUser)
+	})
+
+	t.Run("Disallowed mimetype", func(t *testing.T) {
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		router.Use(func(c *gin.Context) {
+			c.Set("userId", uid)
+			session := sessions.Default(c)
+			session.Set("userId", uid)
+		})
+
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("Get", uid).Return(mockUser, nil)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
+		rr := httptest.NewRecorder()
+
+		multipartImageFixture := fixture.NewMultipartImage("image.txt", "mage/svg+xml")
+		defer multipartImageFixture.Close()
+
+		request, _ := http.NewRequest(http.MethodPut, "/api/account", multipartImageFixture.MultipartBody)
+
+		router.ServeHTTP(rr, request)
+
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+
+		mockUserService.AssertNotCalled(t, "ChangeAvatar")
 	})
 
 	t.Run("Email already in use", func(t *testing.T) {
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		router.Use(func(c *gin.Context) {
+			c.Set("userId", uid)
+			session := sessions.Default(c)
+			session.Set("userId", uid)
+		})
+
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("Get", uid).Return(mockUser, nil)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
 		rr := httptest.NewRecorder()
 
-		newName := "Sen"
-		newEmail := "duplicate@example.com"
-
 		form := url.Values{}
-		form.Add("username", newName)
-		form.Add("email", newEmail)
+
+		duplicateEmail := "duplicate@example.com"
+		form.Add("username", mockUser.Username)
+		form.Add("email", duplicateEmail)
 
 		request, _ := http.NewRequest(http.MethodPut, "/api/account", strings.NewReader(form.Encode()))
 		request.Form = form
 
-		userToUpdate := &model.User{
-			Username: newName,
-			Email:    newEmail,
-		}
-		userToUpdate.ID = user.ID
-
-		updateArgs := mock.Arguments{
-			userToUpdate,
-		}
-
 		mockUserService.
-			On("IsEmailAlreadyInUse", newEmail).Return(true)
+			On("IsEmailAlreadyInUse", duplicateEmail).
+			Return(true)
 
 		router.ServeHTTP(rr, request)
 
@@ -300,45 +359,278 @@ func TestEdit(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
-		mockUserService.AssertCalled(t, "IsEmailAlreadyInUse", newEmail)
-		mockUserService.AssertNotCalled(t, "UpdateAccount", updateArgs...)
+		mockUserService.AssertNotCalled(t, "UpdateAccount", mockUser)
 	})
+}
 
-	t.Run("Username too short", func(t *testing.T) {
+func TestHandler_ChangePassword(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+
+	uid, _ := service.GenerateId()
+	mockUser := fixture.GetMockUser()
+	mockUser.ID = uid
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("Get", uid).Return(mockUser, nil)
+
+		NewHandler(&Config{
+			R:           router,
+			UserService: mockUserService,
+		})
+
 		rr := httptest.NewRecorder()
 
-		tooShortName := "Se"
-		newEmail := "sen@example.com"
+		reqBody, err := json.Marshal(gin.H{
+			"currentPassword":    "password",
+			"newPassword":        "password!",
+			"confirmNewPassword": "password!",
+		})
+		assert.NoError(t, err)
 
-		form := url.Values{}
-		form.Add("username", tooShortName)
-		form.Add("email", newEmail)
+		request, _ := http.NewRequest(http.MethodPut, "/api/account/change-password", bytes.NewBuffer(reqBody))
 
-		request, _ := http.NewRequest(http.MethodPut, "/api/account", strings.NewReader(form.Encode()))
-		request.Form = form
+		request.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(rr, request)
+
+		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		mockUserService.AssertNotCalled(t, "ChangePassword")
+	})
+
+	t.Run("ChangePassword success", func(t *testing.T) {
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		router.Use(func(c *gin.Context) {
+			c.Set("userId", uid)
+			session := sessions.Default(c)
+			session.Set("userId", uid)
+		})
+
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("Get", uid).Return(mockUser, nil)
+
+		currentPassword := mockUser.Password
+		newPassword := "password!"
+
+		ChangePasswordArgs := mock.Arguments{
+			currentPassword,
+			newPassword,
+			mockUser,
+		}
+
+		mockUserService.
+			On("ChangePassword", ChangePasswordArgs...).
+			Return(nil)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
+		rr := httptest.NewRecorder()
+
+		reqBody, err := json.Marshal(gin.H{
+			"currentPassword":    currentPassword,
+			"newPassword":        newPassword,
+			"confirmNewPassword": newPassword,
+		})
+		assert.NoError(t, err)
+
+		request, _ := http.NewRequest(http.MethodPut, "/api/account/change-password", bytes.NewBuffer(reqBody))
+		request.Header.Set("Content-Type", "application/json")
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, 400, rr.Code)
-		mockUserService.AssertNotCalled(t, "UpdateAccount")
+		respBody, _ := json.Marshal(true)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, respBody, rr.Body.Bytes())
+		mockUserService.AssertCalled(t, "ChangePassword", ChangePasswordArgs...)
 	})
 
-	t.Run("Username too long", func(t *testing.T) {
+	t.Run("ChangePassword Failure", func(t *testing.T) {
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		router.Use(func(c *gin.Context) {
+			c.Set("userId", uid)
+			session := sessions.Default(c)
+			session.Set("userId", uid)
+		})
+
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("Get", uid).Return(mockUser, nil)
+
+		currentPassword := mockUser.Password
+		newPassword := "password!"
+
+		ChangePasswordArgs := mock.Arguments{
+			currentPassword,
+			newPassword,
+			mockUser,
+		}
+
+		mockError := apperrors.NewInternal()
+		mockUserService.
+			On("ChangePassword", ChangePasswordArgs...).
+			Return(mockError)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
 		rr := httptest.NewRecorder()
 
-		tooShortName := "Seoiasoidhaoushgduasgdiuagsdziuagszidgas"
-		newEmail := "sen@example.com"
+		reqBody, err := json.Marshal(gin.H{
+			"currentPassword":    currentPassword,
+			"newPassword":        newPassword,
+			"confirmNewPassword": newPassword,
+		})
+		assert.NoError(t, err)
 
-		form := url.Values{}
-		form.Add("username", tooShortName)
-		form.Add("email", newEmail)
-
-		request, _ := http.NewRequest(http.MethodPut, "/api/account", strings.NewReader(form.Encode()))
-		request.Form = form
+		request, _ := http.NewRequest(http.MethodPut, "/api/account/change-password", bytes.NewBuffer(reqBody))
+		request.Header.Set("Content-Type", "application/json")
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, 400, rr.Code)
-		mockUserService.AssertNotCalled(t, "UpdateAccount")
+		respBody, _ := json.Marshal(gin.H{
+			"error": mockError,
+		})
+
+		assert.Equal(t, mockError.Status(), rr.Code)
+		assert.Equal(t, respBody, rr.Body.Bytes())
+		mockUserService.AssertCalled(t, "ChangePassword", ChangePasswordArgs...)
 	})
+}
+
+func TestHandler_ChangePassword_BadRequest(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+
+	uid, _ := service.GenerateId()
+	mockUser := fixture.GetMockUser()
+	mockUser.ID = uid
+
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("userId", uid)
+	})
+	store := cookie.NewStore([]byte("secret"))
+	router.Use(sessions.Sessions("vlk", store))
+
+	router.Use(func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Set("userId", uid)
+	})
+
+	mockUserService := new(mocks.UserService)
+	mockUserService.On("Get", uid).Return(mockUser, nil)
+
+	NewHandler(&Config{
+		R:            router,
+		UserService:  mockUserService,
+		MaxBodyBytes: 4 * 1024 * 1024,
+	})
+
+	password := fixture.RandStringRunes(6)
+	confirmPassword := password
+
+	testCases := []struct {
+		name string
+		body gin.H
+	}{
+		{
+			name: "CurrentPassword required",
+			body: gin.H{
+				"newPassword":        password,
+				"confirmNewPassword": confirmPassword,
+			},
+		},
+		{
+			name: "NewPassword too short",
+			body: gin.H{
+				"currentPassword":    fixture.RandStringRunes(6),
+				"newPassword":        fixture.RandStringRunes(5),
+				"confirmNewPassword": confirmPassword,
+			},
+		},
+		{
+			name: "NewPassword too long",
+			body: gin.H{
+				"currentPassword":    fixture.RandStringRunes(6),
+				"newPassword":        fixture.RandStringRunes(151),
+				"confirmNewPassword": confirmPassword,
+			},
+		},
+		{
+			name: "NewPassword required",
+			body: gin.H{
+				"currentPassword":    fixture.RandStringRunes(6),
+				"confirmNewPassword": fixture.RandStringRunes(6),
+			},
+		},
+		{
+			name: "ConfirmNewPassword too short",
+			body: gin.H{
+				"currentPassword":    fixture.RandStringRunes(6),
+				"newPassword":        fixture.RandStringRunes(6),
+				"confirmNewPassword": fixture.RandStringRunes(5),
+			},
+		},
+		{
+			name: "ConfirmNewPassword too long",
+			body: gin.H{
+				"currentPassword":    fixture.RandStringRunes(6),
+				"newPassword":        fixture.RandStringRunes(6),
+				"confirmNewPassword": fixture.RandStringRunes(151),
+			},
+		},
+		{
+			name: "ConfirmNewPassword required",
+			body: gin.H{
+				"currentPassword": fixture.RandStringRunes(6),
+				"newPassword":     fixture.RandStringRunes(6),
+			},
+		},
+		{
+			name: "NewPassword and ConfirmNewPassword not equal",
+			body: gin.H{
+				"currentPassword":    fixture.RandStringRunes(6),
+				"newPassword":        fixture.RandStringRunes(6),
+				"confirmNewPassword": fixture.RandStringRunes(6),
+			},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+
+			rr := httptest.NewRecorder()
+
+			reqBody, err := json.Marshal(tc.body)
+			assert.NoError(t, err)
+
+			request, err := http.NewRequest(http.MethodPut, "/api/account/change-password", bytes.NewBuffer(reqBody))
+			assert.NoError(t, err)
+
+			request.Header.Set("Content-Type", "application/json")
+
+			router.ServeHTTP(rr, request)
+
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+			mockUserService.AssertNotCalled(t, "ChangePassword")
+		})
+	}
 }

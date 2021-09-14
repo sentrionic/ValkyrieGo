@@ -25,7 +25,7 @@ import (
 // @Router /account [get]
 func (h *Handler) Me(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
-	u, err := h.userService.Get(userId)
+	user, err := h.userService.Get(userId)
 
 	if err != nil {
 		log.Printf("Unable to find user: %v\n%v", userId, err)
@@ -37,7 +37,7 @@ func (h *Handler) Me(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, u)
+	c.JSON(http.StatusOK, user)
 }
 
 type editReq struct {
@@ -92,9 +92,8 @@ func (h *Handler) Edit(c *gin.Context) {
 				"message": "email already in use",
 			})
 			return
-		} else {
-			authUser.Email = req.Email
 		}
+		authUser.Email = req.Email
 	}
 
 	if req.Image != nil {
@@ -142,9 +141,9 @@ func (h *Handler) Edit(c *gin.Context) {
 type changeRequest struct {
 	CurrentPassword string `json:"currentPassword" binding:"required"`
 	// Min 6, max 150 characters.
-	NewPassword string `json:"newPassword" binding:"required,gte=6"`
+	NewPassword string `json:"newPassword" binding:"required,gte=6,lte=150"`
 	// Must be the same as the newPassword value.
-	ConfirmNewPassword string `json:"confirmNewPassword" binding:"required,gte=6"`
+	ConfirmNewPassword string `json:"confirmNewPassword" binding:"required,gte=6,lte=150"`
 } //@name ChangePasswordRequest
 
 // ChangePassword handler changes the users password
@@ -185,7 +184,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	err = h.userService.ChangePassword(req.NewPassword, authUser)
+	err = h.userService.ChangePassword(req.CurrentPassword, req.NewPassword, authUser)
 
 	if err != nil {
 		log.Printf("Failed to change password: %v\n", err.Error())

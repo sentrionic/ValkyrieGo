@@ -33,6 +33,10 @@ func hashPassword(password string) (string, error) {
 func comparePasswords(storedPassword string, suppliedPassword string) (bool, error) {
 	pwsalt := strings.Split(storedPassword, ".")
 
+	if len(pwsalt) < 2 {
+		return false, fmt.Errorf("did not provide a valid hash")
+	}
+
 	// check supplied password salted with hash
 	salt, err := hex.DecodeString(pwsalt[1])
 

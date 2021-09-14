@@ -18,6 +18,7 @@ type WebsocketMessage struct {
 	Data   interface{} `json:"data"`
 }
 
+// Encode turns the message into a byte array
 func (message *WebsocketMessage) Encode() []byte {
 	encoding, err := json.Marshal(message)
 	if err != nil {

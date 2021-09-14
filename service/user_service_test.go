@@ -6,34 +6,27 @@ import (
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"github.com/sentrionic/valkyrie/model/fixture"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGet(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		uid, _ := GenerateId()
-
-		mockUserResp := &model.User{
-			Email:    "bob@bob.com",
-			Username: "Bobby",
-			Image:    "image",
-			IsOnline: false,
-		}
-		mockUserResp.ID = uid
+		mockUser := fixture.GetMockUser()
+		mockUser.ID = uid
 
 		mockUserRepository := new(mocks.UserRepository)
 		us := NewUserService(&USConfig{
 			UserRepository: mockUserRepository,
 		})
-		mockUserRepository.On("FindByID", uid).Return(mockUserResp, nil)
+		mockUserRepository.On("FindByID", uid).Return(mockUser, nil)
 
 		u, err := us.Get(uid)
 
 		assert.NoError(t, err)
-		assert.Equal(t, u, mockUserResp)
+		assert.Equal(t, u, mockUser)
 		mockUserRepository.AssertExpectations(t)
 	})
 
@@ -55,14 +48,50 @@ func TestGet(t *testing.T) {
 	})
 }
 
+func TestUserService_GetByEmail(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		mockUser := fixture.GetMockUser()
+
+		mockUserRepository := new(mocks.UserRepository)
+		us := NewUserService(&USConfig{
+			UserRepository: mockUserRepository,
+		})
+		mockUserRepository.On("FindByEmail", mockUser.Email).Return(mockUser, nil)
+
+		u, err := us.GetByEmail(mockUser.Email)
+
+		assert.NoError(t, err)
+		assert.Equal(t, u, mockUser)
+		mockUserRepository.AssertExpectations(t)
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		email := fixture.Email()
+
+		mockUserRepository := new(mocks.UserRepository)
+		us := NewUserService(&USConfig{
+			UserRepository: mockUserRepository,
+		})
+
+		mockUserRepository.On("FindByEmail", email).Return(nil, fmt.Errorf("some error down the call chain"))
+
+		u, err := us.GetByEmail(email)
+
+		assert.Nil(t, u)
+		assert.Error(t, err)
+		mockUserRepository.AssertExpectations(t)
+	})
+}
+
 func TestRegister(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		uid, _ := GenerateId()
+		mockUser := fixture.GetMockUser()
 
-		mockUser := &model.User{
-			Email:    "bob@bob.com",
-			Username: "bobby",
-			Password: "howdyhoneighbor!",
+		initial := &model.User{
+			Username: mockUser.Username,
+			Email:    mockUser.Email,
+			Password: mockUser.Password,
 		}
 
 		mockUserRepository := new(mocks.UserRepository)
@@ -73,18 +102,18 @@ func TestRegister(t *testing.T) {
 		// We can use Run method to modify the user when the Create method is called.
 		//  We can then chain on a Return method to return no error
 		mockUserRepository.
-			On("Create", mockUser).
+			On("Create", initial).
 			Run(func(args mock.Arguments) {
-				userArg := args.Get(0).(*model.User) // arg 0 is context, arg 1 is *User
-				userArg.ID = uid
-			}).Return(nil)
+				mockUser.ID = uid
+			}).Return(mockUser, nil)
 
-		err := us.Register(mockUser)
+		user, err := us.Register(initial)
 
 		assert.NoError(t, err)
 
 		// assert user now has a userID
 		assert.Equal(t, uid, mockUser.ID)
+		assert.Equal(t, user, mockUser)
 
 		mockUserRepository.AssertExpectations(t)
 	})
@@ -101,18 +130,19 @@ func TestRegister(t *testing.T) {
 			UserRepository: mockUserRepository,
 		})
 
-		mockErr := apperrors.NewConflict("email", mockUser.Email)
+		mockErr := apperrors.NewConflict("email", "bob@bob.com")
 
 		// We can use Run method to modify the user when the Create method is called.
 		//  We can then chain on a Return method to return no error
 		mockUserRepository.
 			On("Create", mockUser).
-			Return(mockErr)
+			Return(nil, mockErr)
 
-		err := us.Register(mockUser)
+		user, err := us.Register(mockUser)
 
 		// assert error is error we response with in mock
 		assert.EqualError(t, err, mockErr.Error())
+		assert.Nil(t, user)
 
 		mockUserRepository.AssertExpectations(t)
 	})
@@ -121,7 +151,6 @@ func TestRegister(t *testing.T) {
 func TestLogin(t *testing.T) {
 	// setup valid email/pw combo with hashed password to test method
 	// response when provided password is invalid
-	email := "bob@bob.com"
 	validPW := "howdyhoneighbor!"
 	hashedValidPW, _ := hashPassword(validPW)
 	invalidPW := "howdyhodufus!"
@@ -132,50 +161,28 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		uid, _ := GenerateId()
+		mockUser := fixture.GetMockUser()
+		mockUser.Password = hashedValidPW
 
-		mockUser := &model.User{
-			Email:    email,
-			Password: validPW,
-		}
-
-		mockUserResp := &model.User{
-			Email:    email,
-			Password: hashedValidPW,
-		}
-		mockUserResp.ID = uid
-
-		mockArgs := mock.Arguments{
-			email,
-		}
-
-		// We can use Run method to modify the user when the Create method is called.
-		//  We can then chain on a Return method to return no error
 		mockUserRepository.
-			On("FindByEmail", mockArgs...).Return(mockUserResp, nil)
+			On("FindByEmail", mockUser.Email).Return(mockUser, nil)
 
-		err := us.Login(mockUser)
+		user, err := us.Login(mockUser.Email, validPW)
 
 		assert.NoError(t, err)
-		mockUserRepository.AssertCalled(t, "FindByEmail", mockArgs...)
+		assert.Equal(t, user, mockUser)
+		mockUserRepository.AssertCalled(t, "FindByEmail", mockUser.Email)
 	})
 
 	t.Run("Invalid email/password combination", func(t *testing.T) {
 		uid, _ := GenerateId()
 
-		mockUser := &model.User{
-			Email:    email,
-			Password: invalidPW,
-		}
-
-		mockUserResp := &model.User{
-			Email:    email,
-			Password: hashedValidPW,
-		}
+		mockUserResp := fixture.GetMockUser()
 		mockUserResp.ID = uid
+		mockUserResp.Password = hashedValidPW
 
 		mockArgs := mock.Arguments{
-			email,
+			mockUserResp.Email,
 		}
 
 		// We can use Run method to modify the user when the Create method is called.
@@ -183,30 +190,25 @@ func TestLogin(t *testing.T) {
 		mockUserRepository.
 			On("FindByEmail", mockArgs...).Return(mockUserResp, nil)
 
-		err := us.Login(mockUser)
+		user, err := us.Login(mockUserResp.Email, invalidPW)
 
 		assert.Error(t, err)
 		assert.EqualError(t, err, "Invalid email and password combination")
+		assert.Nil(t, user)
 		mockUserRepository.AssertCalled(t, "FindByEmail", mockArgs...)
 	})
 }
 
-func TestUpdateUser(t *testing.T) {
+func TestUpdateDetails(t *testing.T) {
 	mockUserRepository := new(mocks.UserRepository)
-	mockFileRepository := new(mocks.FileRepository)
-
 	us := NewUserService(&USConfig{
 		UserRepository: mockUserRepository,
-		FileRepository: mockFileRepository,
 	})
 
 	t.Run("Success", func(t *testing.T) {
 		uid, _ := GenerateId()
 
-		mockUser := &model.User{
-			Email:    "new@bob.com",
-			Username: "robert",
-		}
+		mockUser := fixture.GetMockUser()
 		mockUser.ID = uid
 
 		mockArgs := mock.Arguments{
@@ -225,7 +227,7 @@ func TestUpdateUser(t *testing.T) {
 	t.Run("Failure", func(t *testing.T) {
 		uid, _ := GenerateId()
 
-		mockUser := &model.User{}
+		mockUser := fixture.GetMockUser()
 		mockUser.ID = uid
 
 		mockArgs := mock.Arguments{
@@ -246,16 +248,24 @@ func TestUpdateUser(t *testing.T) {
 
 		mockUserRepository.AssertCalled(t, "Update", mockArgs...)
 	})
+}
+
+func TestUserService_ChangeAvatar(t *testing.T) {
+	mockUserRepository := new(mocks.UserRepository)
+	mockFileRepository := new(mocks.FileRepository)
+
+	us := NewUserService(&USConfig{
+		UserRepository: mockUserRepository,
+		FileRepository: mockFileRepository,
+	})
 
 	t.Run("Successful new image", func(t *testing.T) {
 		uid, _ := GenerateId()
 
 		// does not have have imageURL
-		mockUser := &model.User{
-			Email:    "new@bob.com",
-			Username: "NewRobert",
-		}
+		mockUser := fixture.GetMockUser()
 		mockUser.ID = uid
+		mockUser.Image = ""
 
 		multipartImageFixture := fixture.NewMultipartImage("image.png", "image/png")
 		defer multipartImageFixture.Close()
@@ -278,11 +288,16 @@ func TestUpdateUser(t *testing.T) {
 		}
 
 		mockUpdatedUser := &model.User{
-			Email:    "new@bob.com",
-			Username: "NewRobert",
+			BaseModel: model.BaseModel{
+				ID:        mockUser.ID,
+				CreatedAt: mockUser.CreatedAt,
+				UpdatedAt: mockUser.UpdatedAt,
+			},
+			Email:    mockUser.Email,
+			Username: mockUser.Username,
 			Image:    imageURL,
+			Password: mockUser.Password,
 		}
-		mockUpdatedUser.ID = uid
 
 		mockUserRepository.
 			On("Update", updateArgs...).
@@ -443,5 +458,4 @@ func TestUpdateUser(t *testing.T) {
 		mockFileRepository.AssertCalled(t, "UploadAvatar", uploadFileArgs...)
 		mockUserRepository.AssertCalled(t, "Update", updateArgs...)
 	})
-
 }

@@ -18,6 +18,8 @@ type Hub struct {
 	redisClient    *redis.Client
 }
 
+// Config will hold services that will eventually be injected into this
+// this service layer
 type Config struct {
 	UserService    model.UserService
 	GuildService   model.GuildService
@@ -71,6 +73,7 @@ func (hub *Hub) broadcastToClients(message []byte) {
 	}
 }
 
+// BroadcastToRoom sends the given message to all clients connected to the given room
 func (hub *Hub) BroadcastToRoom(message []byte, room string) {
 	if room := hub.findRoomById(room); room != nil {
 		room.publishRoomMessage(message)

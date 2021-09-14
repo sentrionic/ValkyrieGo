@@ -3,6 +3,8 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
 	"github.com/sentrionic/valkyrie/model"
@@ -15,7 +17,7 @@ import (
 	"testing"
 )
 
-func TestCreateChannel(t *testing.T) {
+func TestHandler_CreateChannel(t *testing.T) {
 	// Setup
 	gin.SetMode(gin.TestMode)
 
@@ -30,6 +32,13 @@ func TestCreateChannel(t *testing.T) {
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Set("userId", uid)
+	})
+	store := cookie.NewStore([]byte("secret"))
+	router.Use(sessions.Sessions("vlk", store))
+
+	router.Use(func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Set("userId", uid)
 	})
 
 	mockUserService := new(mocks.UserService)
@@ -174,6 +183,13 @@ func TestCreateChannel(t *testing.T) {
 		router.Use(func(c *gin.Context) {
 			c.Set("userId", uid)
 		})
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		router.Use(func(c *gin.Context) {
+			session := sessions.Default(c)
+			session.Set("userId", uid)
+		})
 
 		mockChannelService := new(mocks.ChannelService)
 		NewHandler(&Config{
@@ -299,8 +315,12 @@ func TestCreateChannel(t *testing.T) {
 		user.ID = uid
 
 		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
 		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
+			session := sessions.Default(c)
+			session.Set("userId", uid)
 		})
 
 		mockUserService := new(mocks.UserService)

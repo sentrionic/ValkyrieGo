@@ -2,7 +2,7 @@ module github.com/sentrionic/valkyrie
 
 go 1.16
 
-// +heroku goVersion go1.16
+// +heroku goVersion go1.17
 
 require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751

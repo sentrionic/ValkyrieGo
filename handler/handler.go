@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
+	// Register swagger docs
 	_ "github.com/sentrionic/valkyrie/docs"
 	"github.com/sentrionic/valkyrie/handler/middleware"
 	"github.com/sentrionic/valkyrie/model"
@@ -69,10 +70,7 @@ func NewHandler(c *Config) {
 	ag.POST("/forgot-password", h.ForgotPassword)
 	ag.POST("/reset-password", h.ResetPassword)
 
-	if gin.Mode() != gin.TestMode {
-		ag.Use(middleware.AuthUser())
-	}
-
+	ag.Use(middleware.AuthUser())
 	ag.GET("", h.Me)
 	ag.PUT("", h.Edit)
 	ag.PUT("/change-password", h.ChangePassword)
@@ -106,9 +104,7 @@ func NewHandler(c *Config) {
 
 	// Create a channels group
 	cg := c.R.Group("api/channels")
-	if gin.Mode() != gin.TestMode {
-		cg.Use(middleware.AuthUser())
-	}
+	cg.Use(middleware.AuthUser())
 
 	// Route parameters cause conflicts so they have to use the same parameter name
 	cg.GET("/:id", h.GuildChannels)                 // id -> guildId

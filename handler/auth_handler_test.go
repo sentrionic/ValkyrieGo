@@ -3,10 +3,14 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
+	"github.com/sentrionic/valkyrie/model/fixture"
+	"github.com/sentrionic/valkyrie/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"net/http"
@@ -14,9 +18,16 @@ import (
 	"testing"
 )
 
-func TestRegister(t *testing.T) {
+func TestHandler_Register(t *testing.T) {
 	// Setup
 	gin.SetMode(gin.TestMode)
+
+	user := fixture.GetMockUser()
+	reqUser := &model.User{
+		Email:    user.Email,
+		Password: user.Password,
+		Username: user.Username,
+	}
 
 	t.Run("Email, Username and Password Required", func(t *testing.T) {
 		// We just want this to show that it's not called in this case
@@ -199,13 +210,13 @@ func TestRegister(t *testing.T) {
 
 	t.Run("Error returned from UserService", func(t *testing.T) {
 		u := &model.User{
-			Email:    "bob@bob.com",
-			Username: "bobby",
-			Password: "avalidpassword",
+			Email:    reqUser.Email,
+			Username: reqUser.Username,
+			Password: reqUser.Password,
 		}
 
 		mockUserService := new(mocks.UserService)
-		mockUserService.On("Register", u).Return(apperrors.NewConflict("User Already Exists", u.Email))
+		mockUserService.On("Register", u).Return(nil, apperrors.NewConflict("User Already Exists", u.Email))
 
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
@@ -240,21 +251,23 @@ func TestRegister(t *testing.T) {
 
 	t.Run("Successful Creation", func(t *testing.T) {
 		u := &model.User{
-			Email:    "bob@bob.com",
-			Username: "bobby",
-			Password: "avalidpassword",
+			Email:    reqUser.Email,
+			Username: reqUser.Username,
+			Password: reqUser.Password,
 		}
 
 		mockUserService := new(mocks.UserService)
 
 		mockUserService.
 			On("Register", u).
-			Return(nil)
+			Return(reqUser, nil)
 
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
 		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
 
 		NewHandler(&Config{
 			R:           router,
@@ -287,7 +300,7 @@ func TestRegister(t *testing.T) {
 	})
 }
 
-func TestLogin(t *testing.T) {
+func TestHandler_Login(t *testing.T) {
 	// Setup
 	gin.SetMode(gin.TestMode)
 
@@ -295,6 +308,8 @@ func TestLogin(t *testing.T) {
 	mockUserService := new(mocks.UserService)
 
 	router := gin.Default()
+	store := cookie.NewStore([]byte("secret"))
+	router.Use(sessions.Sessions("vlk", store))
 
 	NewHandler(&Config{
 		R:           router,
@@ -327,13 +342,13 @@ func TestLogin(t *testing.T) {
 		password := "pwdoesnotmatch123"
 
 		mockUSArgs := mock.Arguments{
-			&model.User{Email: email, Password: password},
+			email, password,
 		}
 
 		// so we can check for a known status code
 		mockError := apperrors.NewAuthorization("invalid email/password combo")
 
-		mockUserService.On("Login", mockUSArgs...).Return(mockError)
+		mockUserService.On("Login", mockUSArgs...).Return(nil, mockError)
 
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
@@ -356,25 +371,22 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("Successful Login", func(t *testing.T) {
-		email := "bob@bob.com"
-		password := "pwworksgreat123"
+		user := fixture.GetMockUser()
 
-		u := &model.User{
-			Email:    email,
-			Password: password,
+		mockUSArgs := mock.Arguments{
+			user.Email,
+			user.Password,
 		}
 
-		mockUSArgs := mock.Arguments{u}
-
-		mockUserService.On("Login", mockUSArgs...).Return(nil)
+		mockUserService.On("Login", mockUSArgs...).Return(user, nil)
 
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
 		// create a request body with valid fields
 		reqBody, err := json.Marshal(gin.H{
-			"email":    email,
-			"password": password,
+			"email":    user.Email,
+			"password": user.Password,
 		})
 		assert.NoError(t, err)
 
@@ -384,7 +396,7 @@ func TestLogin(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
-		respBody, err := json.Marshal(u)
+		respBody, err := json.Marshal(user)
 		assert.NoError(t, err)
 
 		assert.Equal(t, http.StatusOK, rr.Code)
@@ -392,5 +404,437 @@ func TestLogin(t *testing.T) {
 
 		mockUserService.AssertCalled(t, "Login", mockUSArgs...)
 	})
+}
 
+func TestHandler_Logout(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	t.Run("Success", func(t *testing.T) {
+		uid, _ := service.GenerateId()
+
+		rr := httptest.NewRecorder()
+
+		// creates a test context for setting a user
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+		router.Use(func(c *gin.Context) {
+			c.Set("userId", uid)
+			session := sessions.Default(c)
+			session.Set("userId", uid)
+		})
+
+		NewHandler(&Config{
+			R: router,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/api/account/logout", nil)
+		router.ServeHTTP(rr, request)
+
+		respBody, _ := json.Marshal(true)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, respBody, rr.Body.Bytes())
+
+		router.Use(func(c *gin.Context) {
+			contextUserId, exists := c.Get("userId")
+			assert.Equal(t, exists, false)
+			assert.Nil(t, contextUserId)
+
+			session := sessions.Default(c)
+			id := session.Get("userId")
+			assert.Nil(t, id)
+		})
+	})
+}
+
+func TestHandler_ForgotPassword(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+
+	mockUser := fixture.GetMockUser()
+
+	t.Run("ForgotPassword success", func(t *testing.T) {
+		router := gin.Default()
+
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("GetByEmail", mockUser.Email).Return(mockUser, nil)
+
+		ForgotPasswordArgs := mock.Arguments{
+			mock.AnythingOfType("*context.emptyCtx"),
+			mockUser,
+		}
+
+		mockUserService.
+			On("ForgotPassword", ForgotPasswordArgs...).
+			Return(nil)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
+		rr := httptest.NewRecorder()
+
+		reqBody, err := json.Marshal(gin.H{
+			"email": mockUser.Email,
+		})
+		assert.NoError(t, err)
+
+		request, _ := http.NewRequest(http.MethodPost, "/api/account/forgot-password", bytes.NewBuffer(reqBody))
+		request.Header.Set("Content-Type", "application/json")
+
+		router.ServeHTTP(rr, request)
+
+		respBody, _ := json.Marshal(true)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, respBody, rr.Body.Bytes())
+		mockUserService.AssertCalled(t, "ForgotPassword", ForgotPasswordArgs...)
+	})
+
+	t.Run("ForgotPassword Failure", func(t *testing.T) {
+		router := gin.Default()
+
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("GetByEmail", mockUser.Email).Return(mockUser, nil)
+
+		ForgotPasswordArgs := mock.Arguments{
+			mock.AnythingOfType("*context.emptyCtx"),
+			mockUser,
+		}
+
+		mockError := apperrors.NewInternal()
+		mockUserService.
+			On("ForgotPassword", ForgotPasswordArgs...).
+			Return(mockError)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
+		rr := httptest.NewRecorder()
+
+		reqBody, err := json.Marshal(gin.H{
+			"email": mockUser.Email,
+		})
+		assert.NoError(t, err)
+
+		request, _ := http.NewRequest(http.MethodPost, "/api/account/forgot-password", bytes.NewBuffer(reqBody))
+		request.Header.Set("Content-Type", "application/json")
+
+		router.ServeHTTP(rr, request)
+
+		respBody, _ := json.Marshal(gin.H{
+			"message": "Something went wrong. Try again later",
+		})
+
+		assert.Equal(t, mockError.Status(), rr.Code)
+		assert.Equal(t, respBody, rr.Body.Bytes())
+		mockUserService.AssertCalled(t, "ForgotPassword", ForgotPasswordArgs...)
+	})
+
+	t.Run("No user found", func(t *testing.T) {
+		router := gin.Default()
+
+		mockUserService := new(mocks.UserService)
+		mockUserService.On("GetByEmail", mockUser.Email).Return(&model.User{}, nil)
+
+		ForgotPasswordArgs := mock.Arguments{
+			mock.AnythingOfType("*context.emptyCtx"),
+			mockUser,
+		}
+
+		mockUserService.
+			On("ForgotPassword", ForgotPasswordArgs...).
+			Return(nil)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
+		rr := httptest.NewRecorder()
+
+		reqBody, err := json.Marshal(gin.H{
+			"email": mockUser.Email,
+		})
+		assert.NoError(t, err)
+
+		request, _ := http.NewRequest(http.MethodPost, "/api/account/forgot-password", bytes.NewBuffer(reqBody))
+		request.Header.Set("Content-Type", "application/json")
+
+		router.ServeHTTP(rr, request)
+
+		respBody, _ := json.Marshal(true)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, respBody, rr.Body.Bytes())
+		mockUserService.AssertNotCalled(t, "ForgotPassword", ForgotPasswordArgs...)
+	})
+}
+
+func TestHandler_ForgotPassword_BadRequest(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+
+	mockUser := fixture.GetMockUser()
+
+	router := gin.Default()
+
+	mockUserService := new(mocks.UserService)
+	mockUserService.On("GetByEmail", mockUser.Email).Return(mockUser, nil)
+
+	NewHandler(&Config{
+		R:            router,
+		UserService:  mockUserService,
+		MaxBodyBytes: 4 * 1024 * 1024,
+	})
+
+	testCases := []struct {
+		name string
+		body gin.H
+	}{
+		{
+			name: "Email required",
+			body: gin.H{},
+		},
+		{
+			name: "Invalid Email",
+			body: gin.H{
+				"email": "invalidemail",
+			},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+
+			rr := httptest.NewRecorder()
+
+			reqBody, err := json.Marshal(tc.body)
+			assert.NoError(t, err)
+
+			request, err := http.NewRequest(http.MethodPost, "/api/account/forgot-password", bytes.NewBuffer(reqBody))
+			assert.NoError(t, err)
+
+			request.Header.Set("Content-Type", "application/json")
+
+			router.ServeHTTP(rr, request)
+
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+			mockUserService.AssertNotCalled(t, "ForgotPassword")
+		})
+	}
+}
+
+func TestHandler_ResetPassword(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+
+	mockUser := fixture.GetMockUser()
+	token := fixture.RandStringRunes(18)
+
+	t.Run("ResetPassword success", func(t *testing.T) {
+		mockUserService := new(mocks.UserService)
+
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		ResetPasswordArgs := mock.Arguments{
+			mock.AnythingOfType("*context.emptyCtx"),
+			mockUser.Password,
+			token,
+		}
+
+		mockUserService.
+			On("ResetPassword", ResetPasswordArgs...).
+			Return(mockUser, nil)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
+		rr := httptest.NewRecorder()
+
+		reqBody, err := json.Marshal(gin.H{
+			"token":              token,
+			"newPassword":        mockUser.Password,
+			"confirmNewPassword": mockUser.Password,
+		})
+		assert.NoError(t, err)
+
+		request, _ := http.NewRequest(http.MethodPost, "/api/account/reset-password", bytes.NewBuffer(reqBody))
+		request.Header.Set("Content-Type", "application/json")
+
+		router.ServeHTTP(rr, request)
+
+		respBody, _ := json.Marshal(mockUser)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, respBody, rr.Body.Bytes())
+		mockUserService.AssertCalled(t, "ResetPassword", ResetPasswordArgs...)
+	})
+
+	t.Run("ResetPassword Failure", func(t *testing.T) {
+		mockUserService := new(mocks.UserService)
+
+		router := gin.Default()
+		store := cookie.NewStore([]byte("secret"))
+		router.Use(sessions.Sessions("vlk", store))
+
+		ResetPasswordArgs := mock.Arguments{
+			mock.AnythingOfType("*context.emptyCtx"),
+			mockUser.Password,
+			token,
+		}
+
+		mockError := apperrors.NewInternal()
+		mockUserService.
+			On("ResetPassword", ResetPasswordArgs...).
+			Return(nil, mockError)
+
+		NewHandler(&Config{
+			R:            router,
+			UserService:  mockUserService,
+			MaxBodyBytes: 4 * 1024 * 1024,
+		})
+
+		rr := httptest.NewRecorder()
+
+		reqBody, err := json.Marshal(gin.H{
+			"token":              token,
+			"newPassword":        mockUser.Password,
+			"confirmNewPassword": mockUser.Password,
+		})
+		assert.NoError(t, err)
+
+		request, _ := http.NewRequest(http.MethodPost, "/api/account/reset-password", bytes.NewBuffer(reqBody))
+		request.Header.Set("Content-Type", "application/json")
+
+		router.ServeHTTP(rr, request)
+
+		respBody, _ := json.Marshal(gin.H{
+			"error": mockError,
+		})
+
+		assert.Equal(t, mockError.Status(), rr.Code)
+		assert.Equal(t, respBody, rr.Body.Bytes())
+		mockUserService.AssertCalled(t, "ResetPassword", ResetPasswordArgs...)
+	})
+}
+
+func TestHandler_ResetPassword_BadRequest(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+
+	router := gin.Default()
+
+	mockUserService := new(mocks.UserService)
+
+	NewHandler(&Config{
+		R:           router,
+		UserService: mockUserService,
+	})
+
+	password := fixture.RandStringRunes(6)
+	confirmPassword := password
+
+	testCases := []struct {
+		name string
+		body gin.H
+	}{
+		{
+			name: "Token required",
+			body: gin.H{
+				"newPassword":        password,
+				"confirmNewPassword": password,
+			},
+		},
+		{
+			name: "Password required",
+			body: gin.H{
+				"token":              fixture.RandStringRunes(18),
+				"confirmNewPassword": password,
+			},
+		},
+		{
+			name: "Password too short",
+			body: gin.H{
+				"token":              fixture.RandStringRunes(18),
+				"newPassword":        fixture.RandStringRunes(5),
+				"confirmNewPassword": confirmPassword,
+			},
+		},
+		{
+			name: "NewPassword too long",
+			body: gin.H{
+				"token":              fixture.RandStringRunes(16),
+				"newPassword":        fixture.RandStringRunes(151),
+				"confirmNewPassword": confirmPassword,
+			},
+		},
+		{
+			name: "ConfirmNewPassword too short",
+			body: gin.H{
+				"token":              fixture.RandStringRunes(6),
+				"newPassword":        fixture.RandStringRunes(6),
+				"confirmNewPassword": fixture.RandStringRunes(5),
+			},
+		},
+		{
+			name: "ConfirmNewPassword too long",
+			body: gin.H{
+				"currentPassword":    fixture.RandStringRunes(6),
+				"newPassword":        fixture.RandStringRunes(6),
+				"confirmNewPassword": fixture.RandStringRunes(151),
+			},
+		},
+		{
+			name: "ConfirmNewPassword required",
+			body: gin.H{
+				"token":       fixture.RandStringRunes(6),
+				"newPassword": fixture.RandStringRunes(6),
+			},
+		},
+		{
+			name: "NewPassword and ConfirmNewPassword not equal",
+			body: gin.H{
+				"token":              fixture.RandStringRunes(6),
+				"newPassword":        fixture.RandStringRunes(6),
+				"confirmNewPassword": fixture.RandStringRunes(6),
+			},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+
+			rr := httptest.NewRecorder()
+
+			reqBody, err := json.Marshal(tc.body)
+			assert.NoError(t, err)
+
+			request, err := http.NewRequest(http.MethodPost, "/api/account/reset-password", bytes.NewBuffer(reqBody))
+			assert.NoError(t, err)
+
+			request.Header.Set("Content-Type", "application/json")
+
+			router.ServeHTTP(rr, request)
+
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+			mockUserService.AssertNotCalled(t, "ResetPassword")
+		})
+	}
 }

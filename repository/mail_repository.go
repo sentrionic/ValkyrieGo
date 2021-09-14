@@ -3,8 +3,6 @@ package repository
 import (
 	"fmt"
 	"github.com/sentrionic/valkyrie/model"
-	_ "image/jpeg"
-	_ "image/png"
 	"net/smtp"
 )
 

@@ -37,13 +37,13 @@ func (_m *UserService) ChangeAvatar(header *multipart.FileHeader, directory stri
 	return r0, r1
 }
 
-// ChangePassword provides a mock function with given fields: password, user
-func (_m *UserService) ChangePassword(password string, user *model.User) error {
-	ret := _m.Called(password, user)
+// ChangePassword provides a mock function with given fields: currentPassword, newPassword, user
+func (_m *UserService) ChangePassword(currentPassword string, newPassword string, user *model.User) error {
+	ret := _m.Called(currentPassword, newPassword, user)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, *model.User) error); ok {
-		r0 = rf(password, user)
+	if rf, ok := ret.Get(0).(func(string, string, *model.User) error); ok {
+		r0 = rf(currentPassword, newPassword, user)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -185,32 +185,50 @@ func (_m *UserService) IsEmailAlreadyInUse(email string) bool {
 	return r0
 }
 
-// Login provides a mock function with given fields: user
-func (_m *UserService) Login(user *model.User) error {
-	ret := _m.Called(user)
+// Login provides a mock function with given fields: email, password
+func (_m *UserService) Login(email string, password string) (*model.User, error) {
+	ret := _m.Called(email, password)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.User) error); ok {
-		r0 = rf(user)
+	var r0 *model.User
+	if rf, ok := ret.Get(0).(func(string, string) *model.User); ok {
+		r0 = rf(email, password)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.User)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(email, password)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Register provides a mock function with given fields: user
-func (_m *UserService) Register(user *model.User) error {
+func (_m *UserService) Register(user *model.User) (*model.User, error) {
 	ret := _m.Called(user)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.User) error); ok {
+	var r0 *model.User
+	if rf, ok := ret.Get(0).(func(*model.User) *model.User); ok {
 		r0 = rf(user)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.User)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*model.User) error); ok {
+		r1 = rf(user)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // ResetPassword provides a mock function with given fields: ctx, password, token

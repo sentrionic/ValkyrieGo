@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/sentrionic/ValkyrieGo)](https://goreportcard.com/report/github.com/sentrionic/ValkyrieGo)
+
 # ValkyrieGO
 
 <p align="center">
@@ -28,18 +30,18 @@ A [Discord](https://discord.com) backend clone written in Golang.
 - [Gorm](https://gorm.io/) as the database ORM
 - PostgreSQL
 - Redis
-- S3 for storing files and GMail for sending emails
+- S3 for storing files and Gmail for sending emails
 - [React Client](https://github.com/sentrionic/Valkyrie/tree/websocket)
 - [Flutter Application](https://github.com/sentrionic/ValkyrieApp/tree/websocket)
 ---
 
 ## Installation
+If you are familiar with `make`, take a look at the `Makefile` to quickly setup the following steps
+or alternatively copy the commands into your CLI.
 
-### Server
-
-1. Install PostgreSQL and create a DB
-2. Install Redis
-3. Install Golang and get all the dependencies
+1. Install Docker and get the Postgresql and Redis containers (`make postgres` && `make redis`)
+2. Start both containers (`make start`) and create a DB (`make createdb`)
+3. Install Golang and get all the dependencies (`go mod tidy`)
 4. Rename `.env.example` to `.env` and fill in the values
 
 - `Required`
@@ -65,5 +67,5 @@ A [Discord](https://discord.com) backend clone written in Golang.
 
 ## Endpoints
 
-Once the server is running go to `localhost:8080/swagger/index.html` to see all the HTTP endpoints
-and `localhost:8080` for all the websocket events.
+Once the server is running go to `localhost:<PORT>/swagger/index.html` to see all the HTTP endpoints
+and `localhost:<PORT>` for all the websocket events.

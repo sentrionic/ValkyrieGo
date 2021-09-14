@@ -19,7 +19,7 @@ type messageService struct {
 	FileRepository    model.FileRepository
 }
 
-// MSConfig will hold repositories that will eventually be injected into this
+// MSConfig will hold repositories that will eventually be injected into
 // this service layer
 type MSConfig struct {
 	MessageRepository model.MessageRepository

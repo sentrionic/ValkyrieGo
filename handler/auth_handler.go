@@ -40,13 +40,13 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	user := &model.User{
+	initial := &model.User{
 		Email:    req.Email,
 		Username: req.Username,
 		Password: req.Password,
 	}
 
-	err := h.userService.Register(user)
+	user, err := h.userService.Register(initial)
 
 	if err != nil {
 		log.Printf("Failed to sign up user: %v\n", err.Error())
@@ -84,12 +84,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	user := &model.User{
-		Email:    req.Email,
-		Password: req.Password,
-	}
-
-	err := h.userService.Login(user)
+	user, err := h.userService.Login(req.Email, req.Password)
 
 	if err != nil {
 		log.Printf("Failed to sign in user: %v\n", err.Error())
@@ -173,16 +168,16 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, true)
+	c.JSON(http.StatusOK, true)
 }
 
 type resetRequest struct {
 	// The from the email provided token.
 	Token string `json:"token" binding:"required"`
 	// Min 6, max 150 characters.
-	Password string `json:"newPassword" binding:"required"`
+	Password string `json:"newPassword" binding:"required,gte=6,lte=150"`
 	// Must be the same as the password value.
-	ConfirmPassword string `json:"confirmNewPassword" binding:"required"`
+	ConfirmPassword string `json:"confirmNewPassword" binding:"required,gte=6,lte=150"`
 } //@name ResetPasswordRequest
 
 // ResetPassword resets the users password with the provided token
@@ -206,6 +201,7 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Passwords do not match",
 		})
+		return
 	}
 
 	ctx := c.Request.Context()
@@ -225,9 +221,6 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 
 // setUserSession saves the users ID in the session
 func setUserSession(c *gin.Context, id string) {
-	if gin.Mode() == gin.TestMode {
-		return
-	}
 	session := sessions.Default(c)
 	session.Set("userId", id)
 	if err := session.Save(); err != nil {

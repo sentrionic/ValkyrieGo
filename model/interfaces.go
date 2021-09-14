@@ -5,24 +5,8 @@ import (
 	"mime/multipart"
 )
 
-// UserService defines methods the handler layer expects
+// FriendService defines methods related to friend operations the handler layer expects
 // any service it interacts with to implement
-type UserService interface {
-	Get(id string) (*User, error)
-	GetByEmail(email string) (*User, error)
-	Register(user *User) error
-	Login(user *User) error
-	UpdateAccount(user *User) error
-	IsEmailAlreadyInUse(email string) bool
-	ChangeAvatar(header *multipart.FileHeader, directory string) (string, error)
-	DeleteImage(key string) error
-	ChangePassword(password string, user *User) error
-	ForgotPassword(ctx context.Context, user *User) error
-	ResetPassword(ctx context.Context, password string, token string) (*User, error)
-	GetFriendAndGuildIds(userId string) (*[]string, error)
-	GetRequestCount(userId string) (*int64, error)
-}
-
 type FriendService interface {
 	GetFriends(id string) (*[]Friend, error)
 	GetRequests(id string) (*[]FriendRequest, error)
@@ -32,6 +16,8 @@ type FriendService interface {
 	SaveRequests(user *User) error
 }
 
+// GuildService defines methods related to guild operations the handler layer expects
+// any service it interacts with to implement
 type GuildService interface {
 	GetUser(uid string) (*User, error)
 	GetGuild(id string) (*Guild, error)
@@ -53,25 +39,8 @@ type GuildService interface {
 	UpdateMemberLastSeen(userId, guildId string) error
 }
 
-type ChannelService interface {
-	CreateChannel(channel *Channel) error
-	GetChannels(userId string, guildId string) (*[]ChannelResponse, error)
-	Get(channelId string) (*Channel, error)
-	GetPrivateChannelMembers(channelId string) (*[]string, error)
-	GetDirectMessages(userId string) (*[]DirectMessage, error)
-	GetDirectMessageChannel(userId string, memberId string) (*string, error)
-	GetDMByUserAndChannel(userId string, channelId string) (string, error)
-	AddDMChannelMembers(memberIds []string, channelId string, userId string) error
-	SetDirectMessageStatus(dmId string, userId string, isOpen bool) error
-	DeleteChannel(channel *Channel) error
-	UpdateChannel(channel *Channel) error
-	CleanPCMembers(channelId string) error
-	AddPrivateChannelMembers(memberIds []string, channelId string) error
-	RemovePrivateChannelMembers(memberIds []string, channelId string) error
-	IsChannelMember(channel *Channel, userId string) error
-	OpenDMForAll(dmId string) error
-}
-
+// MessageService defines methods related to message operations the handler layer expects
+// any service it interacts with to implement
 type MessageService interface {
 	GetMessages(userId string, channel *Channel, cursor string) (*[]MessageResponse, error)
 	CreateMessage(message *Message) error
@@ -81,17 +50,8 @@ type MessageService interface {
 	Get(messageId string) (*Message, error)
 }
 
-// UserRepository defines methods the service layer expects
+// FriendRepository defines methods related to friend db operations the service layer expects
 // any repository it interacts with to implement
-type UserRepository interface {
-	FindByID(id string) (*User, error)
-	Create(user *User) error
-	FindByEmail(email string) (*User, error)
-	Update(user *User) error
-	GetFriendAndGuildIds(userId string) (*[]string, error)
-	GetRequestCount(userId string) (*int64, error)
-}
-
 type FriendRepository interface {
 	FindByID(id string) (*User, error)
 	FriendsList(id string) (*[]Friend, error)
@@ -101,6 +61,8 @@ type FriendRepository interface {
 	Save(user *User) error
 }
 
+// GuildRepository defines methods related to guild db operations the service layer expects
+// any repository it interacts with to implement
 type GuildRepository interface {
 	FindUserByID(uid string) (*User, error)
 	FindByID(id string) (*Guild, error)
@@ -120,36 +82,22 @@ type GuildRepository interface {
 	GetMemberIds(guildId string) (*[]string, error)
 }
 
-type ChannelRepository interface {
-	Create(channel *Channel) error
-	GetGuildDefault(guildId string) (*Channel, error)
-	Get(userId string, guildId string) (*[]ChannelResponse, error)
-	GetDirectMessages(userId string) (*[]DirectMessage, error)
-	GetDirectMessageChannel(userId string, memberId string) (*string, error)
-	GetById(channelId string) (*Channel, error)
-	GetPrivateChannelMembers(channelId string) (*[]string, error)
-	AddDMChannelMembers(members []DMMember) error
-	SetDirectMessageStatus(dmId string, userId string, isOpen bool) error
-	DeleteChannel(channel *Channel) error
-	UpdateChannel(channel *Channel) error
-	CleanPCMembers(channelId string) error
-	AddPrivateChannelMembers(memberIds []string, channelId string) error
-	RemovePrivateChannelMembers(memberIds []string, channelId string) error
-	FindDMByUserAndChannelId(channelId, userId string) (string, error)
-	OpenDMForAll(dmId string) error
-	GetDMMemberIds(channelId string) (*[]string, error)
-}
-
+// FileRepository defines methods related to file upload the service layer expects
+// any repository it interacts with to implement
 type FileRepository interface {
 	UploadAvatar(header *multipart.FileHeader, directory string) (string, error)
 	UploadFile(header *multipart.FileHeader, directory, filename, mimetype string) (string, error)
 	DeleteImage(key string) error
 }
 
+// MailRepository defines methods related to mail operations the service layer expects
+// any repository it interacts with to implement
 type MailRepository interface {
 	SendResetMail(email string, html string) error
 }
 
+// RedisRepository defines methods related to the redis db the service layer expects
+// any repository it interacts with to implement
 type RedisRepository interface {
 	SetResetToken(ctx context.Context, id string) (string, error)
 	GetIdFromToken(ctx context.Context, token string) (string, error)
@@ -158,6 +106,8 @@ type RedisRepository interface {
 	InvalidateInvites(ctx context.Context, guild *Guild)
 }
 
+// MessageRepository defines methods related message db operations the service layer expects
+// any repository it interacts with to implement
 type MessageRepository interface {
 	GetMessages(userId string, channel *Channel, cursor string) (*[]MessageResponse, error)
 	CreateMessage(message *Message) error
@@ -166,6 +116,8 @@ type MessageRepository interface {
 	GetById(messageId string) (*Message, error)
 }
 
+// SocketService defines methods related emitting websocket events the service layer expects
+// any repository it interacts with to implement
 type SocketService interface {
 	EmitNewMessage(room string, message *MessageResponse)
 	EmitEditMessage(room string, message *MessageResponse)

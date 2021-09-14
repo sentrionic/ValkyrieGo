@@ -11,7 +11,7 @@ type friendService struct {
 	FriendRepository model.FriendRepository
 }
 
-// FSConfig will hold repositories that will eventually be injected into this
+// FSConfig will hold repositories that will eventually be injected into
 // this service layer
 type FSConfig struct {
 	UserRepository   model.UserRepository

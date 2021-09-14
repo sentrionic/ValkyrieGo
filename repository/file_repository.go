@@ -12,7 +12,9 @@ import (
 	"github.com/sentrionic/valkyrie/service"
 	"image"
 	"image/jpeg"
+	// Register accepted file type jpeg
 	_ "image/jpeg"
+	// Register accepted file type png
 	_ "image/png"
 	"mime/multipart"
 )

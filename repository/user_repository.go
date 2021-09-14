@@ -39,18 +39,19 @@ func (r *userRepository) FindByID(id string) (*model.User, error) {
 }
 
 // Create inserts the user in the DB
-func (r *userRepository) Create(user *model.User) error {
+func (r *userRepository) Create(user *model.User) (*model.User, error) {
 	if result := r.DB.Create(&user); result.Error != nil {
 		// check unique constraint
 		if isDuplicateKeyError(result.Error) {
 			log.Printf("Could not create a user with email: %v. Reason: %v\n", user.Email, result.Error)
-			return apperrors.NewConflict("email", user.Email)
+			return nil, apperrors.NewConflict("email", user.Email)
 		}
 
 		log.Printf("Could not create a user with email: %v. Reason: %v\n", user.Email, result.Error)
-		return apperrors.NewInternal()
+		return nil, apperrors.NewInternal()
 	}
-	return nil
+
+	return user, nil
 }
 
 // FindByEmail retrieves user row by email address

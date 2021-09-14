@@ -13,12 +13,16 @@ type socketService struct {
 	ChannelRepository model.ChannelRepository
 }
 
+// SSConfig will hold repositories that will eventually be injected into
+// this service layer
 type SSConfig struct {
 	Hub               ws.Hub
 	GuildRepository   model.GuildRepository
 	ChannelRepository model.ChannelRepository
 }
 
+// NewSocketService is a factory function for
+// initializing a SocketService with its repository layer dependencies
 func NewSocketService(c *SSConfig) model.SocketService {
 	return &socketService{
 		Hub:               c.Hub,

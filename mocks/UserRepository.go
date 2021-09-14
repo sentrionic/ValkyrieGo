@@ -13,17 +13,26 @@ type UserRepository struct {
 }
 
 // Create provides a mock function with given fields: user
-func (_m *UserRepository) Create(user *model.User) error {
+func (_m *UserRepository) Create(user *model.User) (*model.User, error) {
 	ret := _m.Called(user)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.User) error); ok {
+	var r0 *model.User
+	if rf, ok := ret.Get(0).(func(*model.User) *model.User); ok {
 		r0 = rf(user)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.User)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*model.User) error); ok {
+		r1 = rf(user)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // FindByEmail provides a mock function with given fields: email
