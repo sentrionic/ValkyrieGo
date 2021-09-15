@@ -5,17 +5,6 @@ import (
 	"mime/multipart"
 )
 
-// FriendService defines methods related to friend operations the handler layer expects
-// any service it interacts with to implement
-type FriendService interface {
-	GetFriends(id string) (*[]Friend, error)
-	GetRequests(id string) (*[]FriendRequest, error)
-	GetMemberById(id string) (*User, error)
-	DeleteRequest(memberId string, userId string) error
-	RemoveFriend(memberId string, userId string) error
-	SaveRequests(user *User) error
-}
-
 // GuildService defines methods related to guild operations the handler layer expects
 // any service it interacts with to implement
 type GuildService interface {
@@ -48,17 +37,6 @@ type MessageService interface {
 	DeleteMessage(message *Message) error
 	UploadFile(header *multipart.FileHeader, channelId string) (*Attachment, error)
 	Get(messageId string) (*Message, error)
-}
-
-// FriendRepository defines methods related to friend db operations the service layer expects
-// any repository it interacts with to implement
-type FriendRepository interface {
-	FindByID(id string) (*User, error)
-	FriendsList(id string) (*[]Friend, error)
-	RequestList(id string) (*[]FriendRequest, error)
-	DeleteRequest(memberId string, userId string) error
-	RemoveFriend(memberId string, userId string) error
-	Save(user *User) error
 }
 
 // GuildRepository defines methods related to guild db operations the service layer expects

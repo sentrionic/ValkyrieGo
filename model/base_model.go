@@ -15,6 +15,6 @@ type BaseModel struct {
 // Success is the default response for successful operation
 // Returns true without the JSON
 type Success struct {
-	// Only returns true, not an json object
+	// Only returns true, not a json object
 	Success bool `json:"success"`
 } //@name SuccessResponse
