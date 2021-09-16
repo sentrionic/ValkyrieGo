@@ -3,7 +3,9 @@ package repository
 import (
 	"database/sql"
 	"github.com/sentrionic/valkyrie/model"
+	"github.com/sentrionic/valkyrie/model/apperrors"
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
@@ -21,8 +23,13 @@ func NewChannelRepository(db *gorm.DB) model.ChannelRepository {
 }
 
 // Create inserts a channel in the DB
-func (r *channelRepository) Create(c *model.Channel) error {
-	return r.DB.Create(&c).Error
+func (r *channelRepository) Create(channel *model.Channel) (*model.Channel, error) {
+	if result := r.DB.Create(&channel); result.Error != nil {
+		log.Printf("Could not create a channel for guild: %v. Reason: %v\n", channel.GuildID, result.Error)
+		return nil, apperrors.NewInternal()
+	}
+
+	return channel, nil
 }
 
 // GetGuildDefault fetches the oldest channel for the given guildId from the DB

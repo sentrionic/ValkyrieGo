@@ -8,10 +8,10 @@ import "time"
 // PCMembers should only be used if the channel is private.
 type Channel struct {
 	BaseModel
-	GuildID      *string
-	Name         string
-	IsPublic     bool
-	IsDM         bool
+	GuildID      *string   `gorm:"index"`
+	Name         string    `gorm:"name"`
+	IsPublic     bool      `gorm:"index"`
+	IsDM         bool      `gorm:"is_dm"`
 	LastActivity time.Time `gorm:"autoCreateTime"`
 	PCMembers    []User    `gorm:"many2many:pcmembers;constraint:OnDelete:CASCADE;"`
 	Messages     []Message `gorm:"constraint:OnDelete:CASCADE;"`
@@ -42,7 +42,7 @@ func (c Channel) SerializeChannel() ChannelResponse {
 // ChannelService defines methods related to channel operations the handler layer expects
 // any service it interacts with to implement
 type ChannelService interface {
-	CreateChannel(channel *Channel) error
+	CreateChannel(channel *Channel) (*Channel, error)
 	GetChannels(userId string, guildId string) (*[]ChannelResponse, error)
 	Get(channelId string) (*Channel, error)
 	GetPrivateChannelMembers(channelId string) (*[]string, error)
@@ -63,7 +63,7 @@ type ChannelService interface {
 // ChannelRepository defines methods related to channel db operations the service layer expects
 // any repository it interacts with to implement
 type ChannelRepository interface {
-	Create(channel *Channel) error
+	Create(channel *Channel) (*Channel, error)
 	GetGuildDefault(guildId string) (*Channel, error)
 	Get(userId string, guildId string) (*[]ChannelResponse, error)
 	GetDirectMessages(userId string) (*[]DirectMessage, error)

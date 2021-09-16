@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"github.com/lib/pq"
 	"time"
 )
@@ -44,4 +45,48 @@ func (g Guild) SerializeGuild(channelId string) GuildResponse {
 		HasNotification:  false,
 		DefaultChannelId: channelId,
 	}
+}
+
+// GuildService defines methods related to guild operations the handler layer expects
+// any service it interacts with to implement
+type GuildService interface {
+	GetUser(uid string) (*User, error)
+	GetGuild(id string) (*Guild, error)
+	GetUserGuilds(uid string) (*[]GuildResponse, error)
+	GetGuildMembers(userId string, guildId string) (*[]MemberResponse, error)
+	CreateGuild(guild *Guild) (*Guild, error)
+	GenerateInviteLink(ctx context.Context, guildId string, isPermanent bool) (string, error)
+	UpdateGuild(guild *Guild) error
+	GetGuildIdFromInvite(ctx context.Context, token string) (string, error)
+	GetDefaultChannel(guildId string) (*Channel, error)
+	InvalidateInvites(ctx context.Context, guild *Guild)
+	RemoveMember(userId string, guildId string) error
+	UnbanMember(userId string, guildId string) error
+	DeleteGuild(guildId string) error
+	GetBanList(guildId string) (*[]BanResponse, error)
+	GetMemberSettings(userId string, guildId string) (*MemberSettings, error)
+	UpdateMemberSettings(settings *MemberSettings, userId string, guildId string) error
+	FindUsersByIds(ids []string, guildId string) (*[]User, error)
+	UpdateMemberLastSeen(userId, guildId string) error
+}
+
+// GuildRepository defines methods related to guild db operations the service layer expects
+// any repository it interacts with to implement
+type GuildRepository interface {
+	FindUserByID(uid string) (*User, error)
+	FindByID(id string) (*Guild, error)
+	List(uid string) (*[]GuildResponse, error)
+	GuildMembers(userId string, guildId string) (*[]MemberResponse, error)
+	Create(guild *Guild) (*Guild, error)
+	Save(guild *Guild) error
+	RemoveMember(userId string, guildId string) error
+	Delete(guildId string) error
+	UnbanMember(userId string, guildId string) error
+	GetBanList(guildId string) (*[]BanResponse, error)
+	GetMemberSettings(userId string, guildId string) (*MemberSettings, error)
+	UpdateMemberSettings(settings *MemberSettings, userId string, guildId string) error
+	FindUsersByIds(ids []string, guildId string) (*[]User, error)
+	GetMember(userId, guildId string) (*User, error)
+	UpdateMemberLastSeen(userId, guildId string) error
+	GetMemberIds(guildId string) (*[]string, error)
 }

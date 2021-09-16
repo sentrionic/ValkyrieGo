@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/sentrionic/valkyrie/model/apperrors"
 )
 
 // AuthUser checks if the request contains a valid session
@@ -15,7 +16,7 @@ func AuthUser() gin.HandlerFunc {
 		id := session.Get("userId")
 
 		if id == nil {
-			err := errors.New("provided session is invalid")
+			err := errors.New(apperrors.InvalidSession)
 			c.JSON(401, gin.H{
 				"error": err,
 			})

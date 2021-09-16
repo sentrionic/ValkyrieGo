@@ -2,8 +2,8 @@
 
 # ValkyrieGO
 
-<p align="center">
-  <img src="https://harmony-cdn.s3.eu-central-1.amazonaws.com/logo.png">
+<p style="text-align: center;">
+  <img src="https://harmony-cdn.s3.eu-central-1.amazonaws.com/logo.png" alt="Valkyrie Logo">
 </p>
 
 A [Discord](https://discord.com) backend clone written in Golang.
@@ -69,3 +69,11 @@ or alternatively copy the commands into your CLI.
 
 Once the server is running go to `localhost:<PORT>/swagger/index.html` to see all the HTTP endpoints
 and `localhost:<PORT>` for all the websocket events.
+
+## Tests
+Run `go test -v -cover ./...` (`make test`) to run all tests
+
+## Credits
+[Jacob Goodwin](https://github.com/JacobSNGoodwin/memrizr): This backend is built upon his tutorial series and uses his backend structure
+
+[Jeroen de Kok](https://dev.to/jeroendk/building-a-simple-chat-application-with-websockets-in-go-and-vue-js-gao): The websocket structure is based on his tutorial

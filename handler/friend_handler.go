@@ -77,7 +77,7 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 
 	if userId == memberId {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "You cannot add yourself",
+			"error": apperrors.AddYourselfError,
 		})
 		return
 	}
@@ -113,7 +113,7 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 
 		if err != nil {
 			log.Printf("Unable to add user as friend: %v\n%v", memberId, err)
-			e := apperrors.NewBadRequest("Unable to add user as friend")
+			e := apperrors.NewBadRequest(apperrors.UnableAddError)
 
 			c.JSON(e.Status(), gin.H{
 				"error": e,
@@ -148,7 +148,7 @@ func (h *Handler) RemoveFriend(c *gin.Context) {
 
 	if userId == memberId {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "You cannot remove yourself",
+			"error": apperrors.RemoveYourselfError,
 		})
 		return
 	}
@@ -182,7 +182,7 @@ func (h *Handler) RemoveFriend(c *gin.Context) {
 
 		if err != nil {
 			log.Printf("Unable to remove user from friends: %v\n%v", memberId, err)
-			e := apperrors.NewBadRequest("Unable to remove the user")
+			e := apperrors.NewBadRequest(apperrors.UnableRemoveError)
 
 			c.JSON(e.Status(), gin.H{
 				"error": e,
@@ -211,7 +211,7 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 
 	if userId == memberId {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "You cannot accept yourself",
+			"error": apperrors.AcceptYourselfError,
 		})
 		return
 	}
@@ -249,7 +249,7 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 
 		if err != nil {
 			log.Printf("Unable to accept friends request from user: %v\n%v", memberId, err)
-			e := apperrors.NewBadRequest("Unable to accept the request")
+			e := apperrors.NewBadRequest(apperrors.UnableAcceptError)
 
 			c.JSON(e.Status(), gin.H{
 				"error": e,
@@ -261,7 +261,7 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 
 		if err != nil {
 			log.Printf("Unable to accept friends request from user: %v\n%v", memberId, err)
-			e := apperrors.NewBadRequest("Unable to accept the request")
+			e := apperrors.NewBadRequest(apperrors.UnableAcceptError)
 
 			c.JSON(e.Status(), gin.H{
 				"error": e,
@@ -273,7 +273,7 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 
 		if err != nil {
 			log.Printf("Unable to remove user from friends: %v\n%v", memberId, err)
-			e := apperrors.NewBadRequest("Unable to remove the user")
+			e := apperrors.NewBadRequest(apperrors.UnableRemoveError)
 
 			c.JSON(e.Status(), gin.H{
 				"error": e,
@@ -303,7 +303,7 @@ func (h *Handler) CancelFriendRequest(c *gin.Context) {
 
 	if userId == memberId {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "You cannot cancel yourself",
+			"error": apperrors.CancelYourselfError,
 		})
 		return
 	}
@@ -338,7 +338,7 @@ func (h *Handler) CancelFriendRequest(c *gin.Context) {
 
 		if err != nil {
 			log.Printf("Unable to remove user from friends: %v\n%v", memberId, err)
-			e := apperrors.NewBadRequest("Unable to remove the user")
+			e := apperrors.NewBadRequest(apperrors.UnableRemoveError)
 
 			c.JSON(e.Status(), gin.H{
 				"error": e,

@@ -12,7 +12,7 @@ type User struct {
 	Email    string    `gorm:"not null;uniqueIndex" json:"email"`
 	Password string    `gorm:"not null" json:"-"`
 	Image    string    `json:"image"`
-	IsOnline bool      `gorm:"default:true" json:"isOnline"`
+	IsOnline bool      `gorm:"index;default:true" json:"isOnline"`
 	Friends  []User    `gorm:"many2many:friends;" json:"-"`
 	Requests []User    `gorm:"many2many:friend_requests;joinForeignKey:sender_id;joinReferences:receiver_id" json:"-"`
 	Guilds   []Guild   `gorm:"many2many:members;" json:"-"`

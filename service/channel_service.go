@@ -28,11 +28,11 @@ func NewChannelService(c *CSConfig) model.ChannelService {
 	}
 }
 
-func (c *channelService) CreateChannel(channel *model.Channel) error {
+func (c *channelService) CreateChannel(channel *model.Channel) (*model.Channel, error) {
 	id, err := GenerateId()
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	channel.ID = id

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
 	"github.com/sentrionic/valkyrie/model"
@@ -265,9 +264,7 @@ func TestHandler_Register(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		NewHandler(&Config{
 			R:           router,
@@ -307,9 +304,7 @@ func TestHandler_Login(t *testing.T) {
 	// setup mock services, gin engine/router, handler layer
 	mockUserService := new(mocks.UserService)
 
-	router := gin.Default()
-	store := cookie.NewStore([]byte("secret"))
-	router.Use(sessions.Sessions("vlk", store))
+	router := getTestRouter()
 
 	NewHandler(&Config{
 		R:           router,
@@ -415,14 +410,7 @@ func TestHandler_Logout(t *testing.T) {
 		rr := httptest.NewRecorder()
 
 		// creates a test context for setting a user
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
-			session := sessions.Default(c)
-			session.Set("userId", uid)
-		})
+		router := getAuthenticatedTestRouter(uid)
 
 		NewHandler(&Config{
 			R: router,
@@ -529,7 +517,7 @@ func TestHandler_ForgotPassword(t *testing.T) {
 		router.ServeHTTP(rr, request)
 
 		respBody, _ := json.Marshal(gin.H{
-			"message": "Something went wrong. Try again later",
+			"message": apperrors.ServerError,
 		})
 
 		assert.Equal(t, mockError.Status(), rr.Code)
@@ -644,9 +632,7 @@ func TestHandler_ResetPassword(t *testing.T) {
 	t.Run("ResetPassword success", func(t *testing.T) {
 		mockUserService := new(mocks.UserService)
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		ResetPasswordArgs := mock.Arguments{
 			mock.AnythingOfType("*context.emptyCtx"),
@@ -688,9 +674,7 @@ func TestHandler_ResetPassword(t *testing.T) {
 	t.Run("ResetPassword Failure", func(t *testing.T) {
 		mockUserService := new(mocks.UserService)
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		ResetPasswordArgs := mock.Arguments{
 			mock.AnythingOfType("*context.emptyCtx"),

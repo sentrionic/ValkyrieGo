@@ -6,6 +6,7 @@ import (
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"log"
 	"time"
 )
 
@@ -84,8 +85,13 @@ func (r *guildRepository) GuildMembers(userId string, guildId string) (*[]model.
 }
 
 // Create inserts the given guild in the DB
-func (r *guildRepository) Create(guild *model.Guild) error {
-	return r.DB.Create(&guild).Error
+func (r *guildRepository) Create(guild *model.Guild) (*model.Guild, error) {
+	if result := r.DB.Create(&guild); result.Error != nil {
+		log.Printf("Could not create a guild for user: %v. Reason: %v\n", guild.OwnerId, result.Error)
+		return nil, apperrors.NewInternal()
+	}
+
+	return guild, nil
 }
 
 // FindUserByID returns a user containing all of their guilds

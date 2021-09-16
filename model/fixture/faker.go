@@ -55,10 +55,6 @@ func Username() string {
 	return RandStringRunes(RandInt(4, 15))
 }
 
-func DisplayName() string {
-	return RandStringRunes(RandInt(4, 50))
-}
-
 func Email() string {
 	email := fmt.Sprintf("%s@example.com", randStringLowerRunes(RandInt(5, 10)))
 	return strings.ToLower(email)

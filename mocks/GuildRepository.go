@@ -13,17 +13,26 @@ type GuildRepository struct {
 }
 
 // Create provides a mock function with given fields: guild
-func (_m *GuildRepository) Create(guild *model.Guild) error {
+func (_m *GuildRepository) Create(guild *model.Guild) (*model.Guild, error) {
 	ret := _m.Called(guild)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.Guild) error); ok {
+	var r0 *model.Guild
+	if rf, ok := ret.Get(0).(func(*model.Guild) *model.Guild); ok {
 		r0 = rf(guild)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Guild)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*model.Guild) error); ok {
+		r1 = rf(guild)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Delete provides a mock function with given fields: guildId

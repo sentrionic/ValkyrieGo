@@ -18,7 +18,7 @@ type memberReq struct {
 	MemberId string `json:"memberId"`
 } //@name MemberRequest
 
-// GetMemberSettings gets the current users role color and nickname
+// GetMemberSettings gets the current user's role color and nickname
 // for the given guild
 // GetMemberSettings godoc
 // @Tags Members
@@ -56,7 +56,7 @@ func (h *Handler) GetMemberSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, settings)
 }
 
-// EditMemberSettings changes the current users role color and nickname
+// EditMemberSettings changes the current user's role color and nickname
 // for the given guild
 // EditMemberSettings godoc
 // @Tags Members

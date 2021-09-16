@@ -55,17 +55,26 @@ func (_m *ChannelService) CleanPCMembers(channelId string) error {
 }
 
 // CreateChannel provides a mock function with given fields: channel
-func (_m *ChannelService) CreateChannel(channel *model.Channel) error {
+func (_m *ChannelService) CreateChannel(channel *model.Channel) (*model.Channel, error) {
 	ret := _m.Called(channel)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.Channel) error); ok {
+	var r0 *model.Channel
+	if rf, ok := ret.Get(0).(func(*model.Channel) *model.Channel); ok {
 		r0 = rf(channel)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Channel)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*model.Channel) error); ok {
+		r1 = rf(channel)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // DeleteChannel provides a mock function with given fields: channel

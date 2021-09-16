@@ -17,7 +17,7 @@ import (
 // @description Valkyrie REST API Specs. This service uses sessions for authentication
 
 // @license.name Apache 2.0
-// @host localhost:8080
+// @host localhost:<PORT>
 // @BasePath /api
 
 func main() {

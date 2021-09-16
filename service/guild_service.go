@@ -47,11 +47,11 @@ func (g *guildService) GetGuildMembers(userId string, guildId string) (*[]model.
 	return g.GuildRepository.GuildMembers(userId, guildId)
 }
 
-func (g *guildService) CreateGuild(guild *model.Guild) error {
+func (g *guildService) CreateGuild(guild *model.Guild) (*model.Guild, error) {
 	id, err := GenerateId()
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	guild.ID = id

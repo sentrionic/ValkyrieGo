@@ -3,8 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
 	"github.com/sentrionic/valkyrie/model"
@@ -41,15 +39,7 @@ func TestHandler_GetUserFriends(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			session.Set("userId", authUser.ID)
-			c.Set("userId", authUser.ID)
-		})
+		router := getAuthenticatedTestRouter(authUser.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -76,9 +66,7 @@ func TestHandler_GetUserFriends(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		NewHandler(&Config{
 			R:             router,
@@ -104,15 +92,7 @@ func TestHandler_GetUserFriends(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			session.Set("userId", authUser.ID)
-			c.Set("userId", authUser.ID)
-		})
+		router := getAuthenticatedTestRouter(authUser.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -160,15 +140,7 @@ func TestHandler_GetUserRequests(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			session.Set("userId", authUser.ID)
-			c.Set("userId", authUser.ID)
-		})
+		router := getAuthenticatedTestRouter(authUser.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -195,9 +167,7 @@ func TestHandler_GetUserRequests(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		NewHandler(&Config{
 			R:             router,
@@ -223,15 +193,7 @@ func TestHandler_GetUserRequests(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			session.Set("userId", authUser.ID)
-			c.Set("userId", authUser.ID)
-		})
+		router := getAuthenticatedTestRouter(authUser.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -288,15 +250,7 @@ func TestHandler_AcceptFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -331,15 +285,7 @@ func TestHandler_AcceptFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -372,9 +318,7 @@ func TestHandler_AcceptFriendRequest(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		NewHandler(&Config{
 			R:           router,
@@ -405,15 +349,7 @@ func TestHandler_AcceptFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -447,15 +383,7 @@ func TestHandler_AcceptFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -500,15 +428,7 @@ func TestHandler_AcceptFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -564,15 +484,7 @@ func TestHandler_SendFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -608,15 +520,7 @@ func TestHandler_SendFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -654,15 +558,7 @@ func TestHandler_SendFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -695,9 +591,7 @@ func TestHandler_SendFriendRequest(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		NewHandler(&Config{
 			R:           router,
@@ -728,15 +622,7 @@ func TestHandler_SendFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -770,15 +656,7 @@ func TestHandler_SendFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -821,15 +699,7 @@ func TestHandler_SendFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -881,15 +751,7 @@ func TestHandler_RemoveFriend(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -924,15 +786,7 @@ func TestHandler_RemoveFriend(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -965,9 +819,7 @@ func TestHandler_RemoveFriend(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		NewHandler(&Config{
 			R:           router,
@@ -998,15 +850,7 @@ func TestHandler_RemoveFriend(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -1040,15 +884,7 @@ func TestHandler_RemoveFriend(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -1092,15 +928,7 @@ func TestHandler_RemoveFriend(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -1149,15 +977,7 @@ func TestHandler_CancelFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -1189,15 +1009,7 @@ func TestHandler_CancelFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -1228,9 +1040,7 @@ func TestHandler_CancelFriendRequest(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		NewHandler(&Config{
 			R:           router,
@@ -1259,15 +1069,7 @@ func TestHandler_CancelFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -1298,15 +1100,7 @@ func TestHandler_CancelFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,
@@ -1346,15 +1140,7 @@ func TestHandler_CancelFriendRequest(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			c.Set("userId", current.ID)
-			session.Set("userId", current.ID)
-		})
+		router := getAuthenticatedTestRouter(current.ID)
 
 		NewHandler(&Config{
 			R:             router,

@@ -121,7 +121,7 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		return
 	}
 
-	channel := model.Channel{
+	channelParams := model.Channel{
 		Name:     req.Name,
 		IsPublic: true,
 		GuildID:  &guildId,
@@ -129,7 +129,7 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 
 	// Channel is private
 	if req.IsPublic != nil && !*req.IsPublic {
-		channel.IsPublic = false
+		channelParams.IsPublic = false
 
 		// Add the current user to the members if they are not in there
 		if !containsUser(req.Members, userId) {
@@ -145,10 +145,12 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		}
 
 		// Create private channel members
-		channel.PCMembers = append(channel.PCMembers, *members...)
+		channelParams.PCMembers = append(channelParams.PCMembers, *members...)
 	}
 
-	if err := h.channelService.CreateChannel(&channel); err != nil {
+	channel, err := h.channelService.CreateChannel(&channelParams)
+
+	if err != nil {
 		log.Printf("Failed to create channel: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
@@ -156,7 +158,7 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		return
 	}
 
-	guild.Channels = append(guild.Channels, channel)
+	guild.Channels = append(guild.Channels, *channel)
 
 	if err := h.guildService.UpdateGuild(guild); err != nil {
 		log.Printf("Failed to create channel: %v\n", err.Error())
@@ -324,14 +326,16 @@ func (h *Handler) GetOrCreateDM(c *gin.Context) {
 
 	// Create the dm channel between the current user and the member
 	id, _ := gonanoid.Nanoid(20)
-	channel := model.Channel{
+	channelParams := model.Channel{
 		Name:     id,
 		IsPublic: false,
 		IsDM:     true,
 	}
 
+	channel, err := h.channelService.CreateChannel(&channelParams)
+
 	// Create the DM channel
-	if err := h.channelService.CreateChannel(&channel); err != nil {
+	if err != nil {
 		log.Printf("Failed to create channel: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,

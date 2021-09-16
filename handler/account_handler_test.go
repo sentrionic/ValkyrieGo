@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
 	"github.com/sentrionic/valkyrie/model"
@@ -38,18 +36,7 @@ func TestHandler_Me(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			session := sessions.Default(c)
-			session.Set("userId", uid)
-		})
-
-		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
-		})
+		router := getAuthenticatedTestRouter(uid)
 
 		NewHandler(&Config{
 			R:           router,
@@ -77,15 +64,7 @@ func TestHandler_Me(t *testing.T) {
 		// a response recorder for getting written http response
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
-			session := sessions.Default(c)
-			session.Set("userId", uid)
-		})
+		router := getAuthenticatedTestRouter(uid)
 
 		NewHandler(&Config{
 			R:           router,
@@ -116,9 +95,7 @@ func TestHandler_Me(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 
 		NewHandler(&Config{
 			R:           router,
@@ -144,9 +121,7 @@ func TestHandler_EditAccount(t *testing.T) {
 	mockUser.ID = uid
 
 	t.Run("Unauthorized", func(t *testing.T) {
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 		mockUserService := new(mocks.UserService)
 		mockUserService.On("Get", uid).Return(mockUser, nil)
 
@@ -174,15 +149,7 @@ func TestHandler_EditAccount(t *testing.T) {
 	})
 
 	t.Run("UpdateAccount success", func(t *testing.T) {
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
-			session := sessions.Default(c)
-			session.Set("userId", uid)
-		})
+		router := getAuthenticatedTestRouter(uid)
 
 		mockUserService := new(mocks.UserService)
 		mockUserService.On("Get", uid).Return(mockUser, nil)
@@ -236,15 +203,7 @@ func TestHandler_EditAccount(t *testing.T) {
 	})
 
 	t.Run("UpdateAccount Failure", func(t *testing.T) {
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
-			session := sessions.Default(c)
-			session.Set("userId", uid)
-		})
+		router := getAuthenticatedTestRouter(uid)
 
 		mockUserService := new(mocks.UserService)
 		mockUserService.On("Get", uid).Return(mockUser, nil)
@@ -282,15 +241,7 @@ func TestHandler_EditAccount(t *testing.T) {
 	})
 
 	t.Run("Disallowed mimetype", func(t *testing.T) {
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
-			session := sessions.Default(c)
-			session.Set("userId", uid)
-		})
+		router := getAuthenticatedTestRouter(uid)
 
 		mockUserService := new(mocks.UserService)
 		mockUserService.On("Get", uid).Return(mockUser, nil)
@@ -316,15 +267,7 @@ func TestHandler_EditAccount(t *testing.T) {
 	})
 
 	t.Run("Email already in use", func(t *testing.T) {
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
-			session := sessions.Default(c)
-			session.Set("userId", uid)
-		})
+		router := getAuthenticatedTestRouter(uid)
 
 		mockUserService := new(mocks.UserService)
 		mockUserService.On("Get", uid).Return(mockUser, nil)
@@ -354,7 +297,7 @@ func TestHandler_EditAccount(t *testing.T) {
 
 		respBody, _ := json.Marshal(gin.H{
 			"field":   "Email",
-			"message": "email already in use",
+			"message": apperrors.DuplicateEmail,
 		})
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
@@ -372,9 +315,7 @@ func TestHandler_ChangePassword(t *testing.T) {
 	mockUser.ID = uid
 
 	t.Run("Unauthorized", func(t *testing.T) {
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
+		router := getTestRouter()
 		mockUserService := new(mocks.UserService)
 		mockUserService.On("Get", uid).Return(mockUser, nil)
 
@@ -402,15 +343,7 @@ func TestHandler_ChangePassword(t *testing.T) {
 	})
 
 	t.Run("ChangePassword success", func(t *testing.T) {
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
-			session := sessions.Default(c)
-			session.Set("userId", uid)
-		})
+		router := getAuthenticatedTestRouter(uid)
 
 		mockUserService := new(mocks.UserService)
 		mockUserService.On("Get", uid).Return(mockUser, nil)
@@ -456,15 +389,7 @@ func TestHandler_ChangePassword(t *testing.T) {
 	})
 
 	t.Run("ChangePassword Failure", func(t *testing.T) {
-		router := gin.Default()
-		store := cookie.NewStore([]byte("secret"))
-		router.Use(sessions.Sessions("vlk", store))
-
-		router.Use(func(c *gin.Context) {
-			c.Set("userId", uid)
-			session := sessions.Default(c)
-			session.Set("userId", uid)
-		})
+		router := getAuthenticatedTestRouter(uid)
 
 		mockUserService := new(mocks.UserService)
 		mockUserService.On("Get", uid).Return(mockUser, nil)
@@ -521,17 +446,7 @@ func TestHandler_ChangePassword_BadRequest(t *testing.T) {
 	mockUser := fixture.GetMockUser()
 	mockUser.ID = uid
 
-	router := gin.Default()
-	router.Use(func(c *gin.Context) {
-		c.Set("userId", uid)
-	})
-	store := cookie.NewStore([]byte("secret"))
-	router.Use(sessions.Sessions("vlk", store))
-
-	router.Use(func(c *gin.Context) {
-		session := sessions.Default(c)
-		session.Set("userId", uid)
-	})
+	router := getAuthenticatedTestRouter(uid)
 
 	mockUserService := new(mocks.UserService)
 	mockUserService.On("Get", uid).Return(mockUser, nil)

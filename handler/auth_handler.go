@@ -147,7 +147,7 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Something went wrong. Try again later",
+			"message": apperrors.ServerError,
 		})
 		return
 	}
@@ -163,7 +163,7 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Something went wrong. Try again later",
+			"message": apperrors.ServerError,
 		})
 		return
 	}
@@ -199,7 +199,7 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	// Check if passwords match
 	if req.Password != req.ConfirmPassword {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Passwords do not match",
+			"message": apperrors.PasswordsDoNotMatch,
 		})
 		return
 	}

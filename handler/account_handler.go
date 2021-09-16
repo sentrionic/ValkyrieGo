@@ -72,7 +72,7 @@ func (h *Handler) Edit(c *gin.Context) {
 	authUser, err := h.userService.Get(userId)
 
 	if err != nil {
-		err := errors.New("provided session is invalid")
+		err := errors.New(apperrors.InvalidSession)
 		c.JSON(401, gin.H{
 			"error": err,
 		})
@@ -89,7 +89,7 @@ func (h *Handler) Edit(c *gin.Context) {
 		if inUse {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"field":   "Email",
-				"message": "email already in use",
+				"message": apperrors.DuplicateEmail,
 			})
 			return
 		}
@@ -102,14 +102,14 @@ func (h *Handler) Edit(c *gin.Context) {
 		mimeType := req.Image.Header.Get("Content-Type")
 
 		if valid := isAllowedImageType(mimeType); !valid {
-			e := apperrors.NewBadRequest("imageFile must be 'image/jpeg' or 'image/png'")
+			e := apperrors.NewBadRequest(apperrors.InvalidImageType)
 			c.JSON(e.Status(), gin.H{
 				"error": e,
 			})
 			return
 		}
 
-		directory := fmt.Sprintf("valkyrie_go/users/%s", authUser.ID)
+		directory := fmt.Sprintf("valkyrie/users/%s", authUser.ID)
 		url, err := h.userService.ChangeAvatar(req.Image, directory)
 
 		if err != nil {
@@ -168,7 +168,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	if req.NewPassword != req.ConfirmNewPassword {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"field":   "password",
-			"message": "passwords do not match",
+			"message": apperrors.PasswordsDoNotMatch,
 		})
 		return
 	}
@@ -176,7 +176,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	authUser, err := h.userService.Get(userId)
 
 	if err != nil {
-		err := errors.New("provided session is invalid")
+		err := errors.New(apperrors.InvalidSession)
 		c.JSON(401, gin.H{
 			"error": err,
 		})

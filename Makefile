@@ -30,3 +30,6 @@ build:
 
 fmt:
 	go fmt github.com/sentrionic/...
+
+workflow:
+	make fmt && make lint && make test

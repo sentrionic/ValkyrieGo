@@ -70,7 +70,7 @@ func (h *Handler) GetGuildMembers(c *gin.Context) {
 
 	// Check if a member
 	if !isMember(guild, userId) {
-		e := apperrors.NewAuthorization("not a member")
+		e := apperrors.NewAuthorization(apperrors.NotAMember)
 
 		c.JSON(e.Status(), gin.H{
 			"error": e,
@@ -131,7 +131,7 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 
 	// Check if the user is already in 100 guilds
 	if len(authUser.Guilds) >= 100 {
-		e := apperrors.NewBadRequest("guild limit is 100")
+		e := apperrors.NewBadRequest(apperrors.GuildLimitReached)
 
 		c.JSON(e.Status(), gin.H{
 			"error": e,
@@ -139,15 +139,17 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 		return
 	}
 
-	guild := model.Guild{
+	guildParams := model.Guild{
 		Name:    req.Name,
 		OwnerId: userId,
 	}
 
 	// Add the current user as a member
-	guild.Members = append(guild.Members, *authUser)
+	guildParams.Members = append(guildParams.Members, *authUser)
 
-	if err := h.guildService.CreateGuild(&guild); err != nil {
+	guild, err := h.guildService.CreateGuild(&guildParams)
+
+	if err != nil {
 		log.Printf("Failed to create guild: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
@@ -156,13 +158,15 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 	}
 
 	// Create the default 'general' channel for the guild
-	channel := model.Channel{
+	channelParams := model.Channel{
 		GuildID:  &guild.ID,
 		Name:     "general",
 		IsPublic: true,
 	}
 
-	if err := h.channelService.CreateChannel(&channel); err != nil {
+	channel, err := h.channelService.CreateChannel(&channelParams)
+
+	if err != nil {
 		log.Printf("Failed to create guild: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
@@ -182,7 +186,7 @@ type editGuildRequest struct {
 	Name string `form:"name" binding:"required,gte=3,lte=30"`
 	// image/png or image/jpeg
 	Image *multipart.FileHeader `form:"image" binding:"omitempty" swaggertype:"string" format:"binary"`
-	// The old guild icon url if no new image is selected. Set null the guild icon should be reset
+	// The old guild icon url if no new image is selected. Set to null to reset the guild icon
 	Icon *string `form:"icon" binding:"omitempty"`
 } //@name EditGuildRequest
 
@@ -220,7 +224,7 @@ func (h *Handler) EditGuild(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "must be the owner for that",
+			"error": apperrors.MustBeOwner,
 		})
 		return
 	}
@@ -233,20 +237,19 @@ func (h *Handler) EditGuild(c *gin.Context) {
 		mimeType := req.Image.Header.Get("Content-Type")
 
 		if valid := isAllowedImageType(mimeType); !valid {
-			log.Println("Image is not an allowable mime-type")
-			e := apperrors.NewBadRequest("imageFile must be 'image/jpeg' or 'image/png'")
+			e := apperrors.NewBadRequest(apperrors.InvalidImageType)
 			c.JSON(e.Status(), gin.H{
 				"error": e,
 			})
 			return
 		}
 
-		directory := fmt.Sprintf("valkyrie_go/guilds/%s", guild.ID)
+		directory := fmt.Sprintf("valkyrie/guilds/%s", guild.ID)
 		url, err := h.userService.ChangeAvatar(req.Image, directory)
 
 		if err != nil {
 			fmt.Println(err)
-			c.JSON(500, gin.H{
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": err,
 			})
 			return
@@ -275,10 +278,10 @@ func (h *Handler) EditGuild(c *gin.Context) {
 	// Emit guild changes to guild members
 	h.socketService.EmitEditGuild(guild)
 
-	c.JSON(http.StatusCreated, true)
+	c.JSON(http.StatusOK, true)
 }
 
-// GetInvite creates an invite for the given channel
+// GetInvite creates an invitation for the given guild
 // The isPermanent query parameter specifies if the invite
 // should not be deleted after it got used
 // GetInvite godoc
@@ -305,9 +308,9 @@ func (h *Handler) GetInvite(c *gin.Context) {
 	}
 
 	userId := c.MustGet("userId").(string)
-	// Must be a member to create an invite
+	// Must be a member to create an invitation
 	if !isMember(guild, userId) {
-		e := apperrors.NewBadRequest("must be a member to fetch an invite")
+		e := apperrors.NewBadRequest(apperrors.MustBeMemberInvite)
 
 		c.JSON(e.Status(), gin.H{
 			"error": e,
@@ -320,7 +323,7 @@ func (h *Handler) GetInvite(c *gin.Context) {
 		isPermanent, err = strconv.ParseBool(permanent)
 
 		if err != nil {
-			e := apperrors.NewBadRequest("isPermanent is not a boolean")
+			e := apperrors.NewBadRequest(apperrors.IsPermanentError)
 
 			c.JSON(e.Status(), gin.H{
 				"error": e,
@@ -337,6 +340,7 @@ func (h *Handler) GetInvite(c *gin.Context) {
 		c.JSON(e.Status(), gin.H{
 			"error": e,
 		})
+		return
 	}
 
 	if isPermanent {
@@ -373,7 +377,7 @@ func (h *Handler) DeleteGuildInvites(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can invalidate invites",
+			"error": apperrors.InvalidateInvitesError,
 		})
 		return
 	}
@@ -429,7 +433,7 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 
 	// Check if the user has reached the guild limit
 	if len(authUser.Guilds) >= 100 {
-		e := apperrors.NewBadRequest("guild limit is 100")
+		e := apperrors.NewBadRequest(apperrors.GuildLimitReached)
 
 		c.JSON(e.Status(), gin.H{
 			"error": e,
@@ -447,7 +451,7 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"message": "Invalid Link or the server got deleted",
+			"message": apperrors.InvalidInviteError,
 		})
 		return
 	}
@@ -456,14 +460,14 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"message": "Invalid Link or the server got deleted",
+			"message": apperrors.InvalidInviteError,
 		})
 		return
 	}
 
 	// Check if the user is banned from the guild
 	if isBanned(guild, authUser.ID) {
-		e := apperrors.NewBadRequest("You are banned from this server")
+		e := apperrors.NewBadRequest(apperrors.BannedFromServer)
 
 		c.JSON(e.Status(), gin.H{
 			"message": e,
@@ -473,10 +477,10 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 
 	// Check if the user is already a member
 	if isMember(guild, authUser.ID) {
-		e := apperrors.NewBadRequest("already a member")
+		e := apperrors.NewBadRequest(apperrors.AlreadyMember)
 
 		c.JSON(e.Status(), gin.H{
-			"error": e,
+			"message": e,
 		})
 		return
 	}
@@ -524,7 +528,7 @@ func (h *Handler) LeaveGuild(c *gin.Context) {
 
 	if guild.OwnerId == userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "the owner cannot leave their server",
+			"error": apperrors.OwnerCantLeave,
 		})
 		return
 	}
@@ -568,11 +572,12 @@ func (h *Handler) DeleteGuild(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can delete their server",
+			"error": apperrors.DeleteGuildError,
 		})
 		return
 	}
 
+	// Get the ID of all members to emit the deletion to
 	members := make([]string, 0)
 	for _, member := range guild.Members {
 		members = append(members, member.ID)
