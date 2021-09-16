@@ -15,7 +15,7 @@ import (
 // memberReq contains the MemberId of the user
 // that needs to be moderated
 type memberReq struct {
-	MemberId string `json:"memberId"`
+	MemberId string `json:"memberId" binding:"required"`
 } //@name MemberRequest
 
 // GetMemberSettings gets the current user's role color and nickname
@@ -68,6 +68,12 @@ func (h *Handler) GetMemberSettings(c *gin.Context) {
 // @Success 200 {object} model.Success
 // @Router /guilds/{guildId}/member [put]
 func (h *Handler) EditMemberSettings(c *gin.Context) {
+	var req model.MemberSettings
+
+	if ok := bindData(c, &req); !ok {
+		return
+	}
+
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
 
@@ -89,12 +95,6 @@ func (h *Handler) EditMemberSettings(c *gin.Context) {
 		c.JSON(e.Status(), gin.H{
 			"error": e,
 		})
-		return
-	}
-
-	var req model.MemberSettings
-
-	if ok := bindData(c, &req); !ok {
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *Handler) GetBanList(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can do that",
+			"error": apperrors.MustBeOwner,
 		})
 		return
 	}
@@ -173,6 +173,12 @@ func (h *Handler) GetBanList(c *gin.Context) {
 // @Success 200 {array} model.Success
 // @Router /guilds/{guildId}/bans [post]
 func (h *Handler) BanMember(c *gin.Context) {
+	var req memberReq
+
+	if ok := bindData(c, &req); !ok {
+		return
+	}
+
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
 
@@ -189,14 +195,8 @@ func (h *Handler) BanMember(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can do that",
+			"error": apperrors.MustBeOwner,
 		})
-		return
-	}
-
-	var req memberReq
-
-	if ok := bindData(c, &req); !ok {
 		return
 	}
 
@@ -214,7 +214,7 @@ func (h *Handler) BanMember(c *gin.Context) {
 
 	if member.ID == userId {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "you cannot ban yourself",
+			"error": apperrors.BanYourselfError,
 		})
 		return
 	}
@@ -256,6 +256,12 @@ func (h *Handler) BanMember(c *gin.Context) {
 // @Success 200 {array} model.Success
 // @Router /guilds/{guildId}/bans [delete]
 func (h *Handler) UnbanMember(c *gin.Context) {
+	var req memberReq
+
+	if ok := bindData(c, &req); !ok {
+		return
+	}
+
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
 
@@ -272,20 +278,14 @@ func (h *Handler) UnbanMember(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can do that",
+			"error": apperrors.MustBeOwner,
 		})
-		return
-	}
-
-	var req memberReq
-
-	if ok := bindData(c, &req); !ok {
 		return
 	}
 
 	if req.MemberId == userId {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "you cannot unban yourself",
+			"error": apperrors.UnbanYourselfError,
 		})
 		return
 	}
@@ -311,6 +311,12 @@ func (h *Handler) UnbanMember(c *gin.Context) {
 // @Success 200 {array} model.Success
 // @Router /guilds/{guildId}/kick [post]
 func (h *Handler) KickMember(c *gin.Context) {
+	var req memberReq
+
+	if ok := bindData(c, &req); !ok {
+		return
+	}
+
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
 
@@ -327,14 +333,8 @@ func (h *Handler) KickMember(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can do that",
+			"error": apperrors.MustBeOwner,
 		})
-		return
-	}
-
-	var req memberReq
-
-	if ok := bindData(c, &req); !ok {
 		return
 	}
 
@@ -352,7 +352,7 @@ func (h *Handler) KickMember(c *gin.Context) {
 
 	if member.ID == userId {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "you cannot kick yourself",
+			"error": apperrors.KickYourselfError,
 		})
 		return
 	}

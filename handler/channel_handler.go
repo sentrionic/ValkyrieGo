@@ -106,7 +106,7 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can do that",
+			"error": apperrors.MustBeOwner,
 		})
 		return
 	}
@@ -213,7 +213,7 @@ func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can do that",
+			"error": apperrors.MustBeOwner,
 		})
 		return
 	}
@@ -417,7 +417,7 @@ func (h *Handler) EditChannel(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can do that",
+			"error": apperrors.MustBeOwner,
 		})
 		return
 	}
@@ -536,14 +536,14 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 
 	if guild.OwnerId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "only the owner can do that",
+			"error": apperrors.MustBeOwner,
 		})
 		return
 	}
 
 	// Check if the guild has the minimum amount of channels
 	if len(guild.Channels) == 1 {
-		e := apperrors.NewBadRequest("A server needs at least one channel")
+		e := apperrors.NewBadRequest(apperrors.OneChannelRequired)
 
 		c.JSON(e.Status(), gin.H{
 			"error": e,

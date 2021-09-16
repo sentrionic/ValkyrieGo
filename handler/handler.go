@@ -3,6 +3,8 @@ package handler
 import (
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
+	"net/http"
+
 	// Register swagger docs
 	_ "github.com/sentrionic/valkyrie/docs"
 	"github.com/sentrionic/valkyrie/handler/middleware"
@@ -52,6 +54,12 @@ func NewHandler(c *Config) {
 		socketService:  c.SocketService,
 		MaxBodyBytes:   c.MaxBodyBytes,
 	}
+
+	c.R.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "No route found. Go to /swagger/*any for a list of all routes",
+		})
+	})
 
 	c.R.Use(static.Serve("/", static.LocalFile("./static", true)))
 

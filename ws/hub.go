@@ -19,7 +19,7 @@ type Hub struct {
 }
 
 // Config will hold services that will eventually be injected into this
-// this service layer
+// service layer
 type Config struct {
 	UserService    model.UserService
 	GuildService   model.GuildService
@@ -27,7 +27,7 @@ type Config struct {
 	Redis          *redis.Client
 }
 
-// NewWebsocketHub creates a new WsServer type
+// NewWebsocketHub creates a new Hub
 func NewWebsocketHub(c *Config) *Hub {
 	return &Hub{
 		clients:        make(map[*Client]bool),
@@ -74,8 +74,8 @@ func (hub *Hub) broadcastToClients(message []byte) {
 }
 
 // BroadcastToRoom sends the given message to all clients connected to the given room
-func (hub *Hub) BroadcastToRoom(message []byte, room string) {
-	if room := hub.findRoomById(room); room != nil {
+func (hub *Hub) BroadcastToRoom(message []byte, roomId string) {
+	if room := hub.findRoomById(roomId); room != nil {
 		room.publishRoomMessage(message)
 	}
 }

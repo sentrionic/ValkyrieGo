@@ -126,14 +126,14 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 	// Either text or file must be provided
 	if req.Text == nil && req.File == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Either a message or a file is required",
+			"error": apperrors.MessageOrFileRequired,
 		})
 		return
 	}
 
 	if req.Text != nil && len(*req.Text) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Message must not be empty",
+			"error": apperrors.MessageEmptyError,
 		})
 		return
 	}
@@ -154,14 +154,14 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 
 		if valid := isAllowedFileType(mimeType); !valid {
 			log.Println("File is not an allowable mime-type")
-			e := apperrors.NewBadRequest("imageFile must be 'image' or 'audio'")
+			e := apperrors.NewBadRequest(apperrors.InvalidMimeType)
 			c.JSON(e.Status(), gin.H{
 				"error": e,
 			})
 			return
 		}
 
-		// Prevent file upload on the life server.
+		// Prevent file upload on the live server.
 		// Remove and uncomment if you do want upload
 		var attachment *model.Attachment
 		if gin.Mode() == gin.ReleaseMode {
@@ -177,14 +177,21 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 
 			if err != nil {
 				fmt.Println(err)
-				c.JSON(500, gin.H{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err,
 				})
 				return
 			}
 		}
 
-		// attachment, err := h.messageService.UploadFile(req.File, channel.ID)
+		//attachment, err := h.messageService.UploadFile(req.File, channel.ID)
+		//if err != nil {
+		//	fmt.Println(err)
+		//	c.JSON(http.StatusInternalServerError, gin.H{
+		//		"error": err,
+		//	})
+		//	return
+		//}
 		message.Attachment = attachment
 	}
 
@@ -266,7 +273,7 @@ func (h *Handler) EditMessage(c *gin.Context) {
 
 	if message.UserId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Only the author can edit the message",
+			"error": apperrors.EditMessageError,
 		})
 		return
 	}
@@ -279,8 +286,8 @@ func (h *Handler) EditMessage(c *gin.Context) {
 
 	if message.Text == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid request parameters. See errors",
-			"errors":  "Text is required",
+			"message": apperrors.InvalidRequestParameters,
+			"errors":  apperrors.TextRequiredError,
 		})
 		return
 	}
@@ -360,7 +367,7 @@ func (h *Handler) DeleteMessage(c *gin.Context) {
 
 		if message.UserId != userId && guild.OwnerId != userId {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Only the author or owner can delete the message",
+				"error": apperrors.DeleteMessageError,
 			})
 			return
 		}
@@ -368,7 +375,7 @@ func (h *Handler) DeleteMessage(c *gin.Context) {
 	} else {
 		if message.UserId != userId {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Only the author can delete the message",
+				"error": apperrors.DeleteDMMessageError,
 			})
 			return
 		}

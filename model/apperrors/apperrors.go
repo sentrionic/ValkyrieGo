@@ -14,6 +14,10 @@ const (
 	BannedFromServer       = "You are banned from this server"
 	DeleteGuildError       = "only the owner can delete their server"
 	OwnerCantLeave         = "the owner cannot leave their server"
+	BanYourselfError       = "you cannot ban yourself"
+	KickYourselfError      = "you cannot kick yourself"
+	UnbanYourselfError     = "you cannot unban yourself"
+	OneChannelRequired     = "A server needs at least one channel"
 )
 
 // Account Errors
@@ -37,4 +41,16 @@ const (
 const (
 	InvalidSession = "provided session is invalid"
 	ServerError    = "Something went wrong. Try again later"
+)
+
+// Message Errors
+const (
+	MessageOrFileRequired    = "Either a message or a file is required"
+	MessageEmptyError        = "Message must not be empty"
+	InvalidMimeType          = "file must be of type 'image' or 'audio'"
+	EditMessageError         = "Only the author can edit the message"
+	InvalidRequestParameters = "Invalid request parameters. See errors"
+	TextRequiredError        = "Text is required"
+	DeleteMessageError       = "Only the author or owner can delete the message"
+	DeleteDMMessageError     = "Only the author can delete the message"
 )
