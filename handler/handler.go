@@ -57,7 +57,7 @@ func NewHandler(c *Config) {
 
 	c.R.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "No route found. Go to /swagger/*any for a list of all routes",
+			"error": "No route found. Go to https://api.valkyrieapp.xyz/swagger/index.html for a list of all routes",
 		})
 	})
 

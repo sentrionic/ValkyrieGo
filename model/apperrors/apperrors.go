@@ -18,6 +18,8 @@ const (
 	KickYourselfError      = "you cannot kick yourself"
 	UnbanYourselfError     = "you cannot unban yourself"
 	OneChannelRequired     = "A server needs at least one channel"
+	ChannelLimitError      = "channel limit is 50"
+	DMYourselfError        = "you cannot dm yourself"
 )
 
 // Account Errors

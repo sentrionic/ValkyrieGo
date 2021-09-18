@@ -130,7 +130,7 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 	}
 
 	// Check if the user is already in 100 guilds
-	if len(authUser.Guilds) >= 100 {
+	if len(authUser.Guilds) >= model.MaximumGuilds {
 		e := apperrors.NewBadRequest(apperrors.GuildLimitReached)
 
 		c.JSON(e.Status(), gin.H{
@@ -432,7 +432,7 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 	}
 
 	// Check if the user has reached the guild limit
-	if len(authUser.Guilds) >= 100 {
+	if len(authUser.Guilds) >= model.MaximumGuilds {
 		e := apperrors.NewBadRequest(apperrors.GuildLimitReached)
 
 		c.JSON(e.Status(), gin.H{

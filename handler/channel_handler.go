@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
-	gonanoid "github.com/matoous/go-nanoid"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
@@ -112,8 +112,8 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 	}
 
 	// Check if the server already has 50 channels
-	if len(guild.Channels) >= 50 {
-		e := apperrors.NewBadRequest("channel limit is 50")
+	if len(guild.Channels) >= model.MaximumChannels {
+		e := apperrors.NewBadRequest(apperrors.ChannelLimitError)
 
 		c.JSON(e.Status(), gin.H{
 			"error": e,
@@ -192,6 +192,15 @@ func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 	channel, err := h.channelService.Get(channelId)
 
 	if err != nil {
+		e := apperrors.NewNotFound("channel", channelId)
+
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
+		return
+	}
+
+	if channel.GuildID == nil {
 		e := apperrors.NewNotFound("channel", channelId)
 
 		c.JSON(e.Status(), gin.H{
@@ -287,7 +296,7 @@ func (h *Handler) GetOrCreateDM(c *gin.Context) {
 
 	if userId == memberId {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "you cannot dm yourself",
+			"error": apperrors.DMYourselfError,
 		})
 		return
 	}
@@ -305,7 +314,7 @@ func (h *Handler) GetOrCreateDM(c *gin.Context) {
 	}
 
 	// check if dm channel already exists with these members
-	dm, err := h.channelService.GetDirectMessageChannel(userId, memberId)
+	dmId, err := h.channelService.GetDirectMessageChannel(userId, memberId)
 
 	if err != nil {
 		log.Printf("Unable to find or create dms for user id: %v\n%v", userId, err)
@@ -318,14 +327,14 @@ func (h *Handler) GetOrCreateDM(c *gin.Context) {
 	}
 
 	// dm already exists
-	if dm != nil && *dm != "" {
-		_ = h.channelService.SetDirectMessageStatus(*dm, userId, true)
-		c.JSON(http.StatusOK, toDMChannel(member, *dm, userId))
+	if dmId != nil && *dmId != "" {
+		_ = h.channelService.SetDirectMessageStatus(*dmId, userId, true)
+		c.JSON(http.StatusOK, toDMChannel(member, *dmId, userId))
 		return
 	}
 
 	// Create the dm channel between the current user and the member
-	id, _ := gonanoid.Nanoid(20)
+	id := fmt.Sprintf("%s-%s", userId, memberId)
 	channelParams := model.Channel{
 		Name:     id,
 		IsPublic: false,
@@ -422,19 +431,24 @@ func (h *Handler) EditChannel(c *gin.Context) {
 		return
 	}
 
+	isPublic := true
+	if req.IsPublic != nil {
+		isPublic = *req.IsPublic
+	}
+
 	// Used to be private and now is public
-	if *req.IsPublic && !channel.IsPublic {
+	if isPublic && !channel.IsPublic {
 		err = h.channelService.CleanPCMembers(channelId)
 		if err != nil {
 			log.Printf("error removing pc members: %v", err)
 		}
 	}
 
-	channel.IsPublic = *req.IsPublic
+	channel.IsPublic = isPublic
 	channel.Name = req.Name
 
 	// Member Changes
-	if !*req.IsPublic {
+	if !isPublic {
 		// Check if the array contains the current member
 		if !containsUser(req.Members, userId) {
 			req.Members = append(req.Members, userId)
@@ -482,7 +496,7 @@ func (h *Handler) EditChannel(c *gin.Context) {
 	response := channel.SerializeChannel()
 	h.socketService.EmitEditChannel(*channel.GuildID, &response)
 
-	c.JSON(http.StatusCreated, true)
+	c.JSON(http.StatusOK, true)
 }
 
 // difference returns the elements in `a` that aren't in `b`.
@@ -542,7 +556,7 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 	}
 
 	// Check if the guild has the minimum amount of channels
-	if len(guild.Channels) == 1 {
+	if len(guild.Channels) <= model.MinimumChannels {
 		e := apperrors.NewBadRequest(apperrors.OneChannelRequired)
 
 		c.JSON(e.Status(), gin.H{
@@ -562,7 +576,7 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 	// Emit signal to remove the channel from the guild
 	h.socketService.EmitDeleteChannel(channel)
 
-	c.JSON(http.StatusCreated, true)
+	c.JSON(http.StatusOK, true)
 }
 
 // CloseDM closes the DM on the current users side
@@ -577,9 +591,9 @@ func (h *Handler) CloseDM(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	channelId := c.Param("id")
 
-	dm, err := h.channelService.GetDMByUserAndChannel(userId, channelId)
+	dmId, err := h.channelService.GetDMByUserAndChannel(userId, channelId)
 
-	if err != nil || dm == "" {
+	if err != nil || dmId == "" {
 		log.Printf("Unable to find or create dms for user id: %v\n%v", userId, err)
 		e := apperrors.NewNotFound("dms", userId)
 

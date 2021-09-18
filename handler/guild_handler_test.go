@@ -431,10 +431,10 @@ func TestHandler_CreateGuild(t *testing.T) {
 		mockChannelService.AssertNotCalled(t, "CreateChannel")
 	})
 
-	t.Run("User already is in 100 guilds", func(t *testing.T) {
+	t.Run("User already is in the maximum number of guilds", func(t *testing.T) {
 		mockGuild := fixture.GetMockGuild(authUser.ID)
 
-		for i := 0; i < 100; i++ {
+		for i := 0; i < model.MaximumGuilds; i++ {
 			guild := fixture.GetMockGuild("")
 			authUser.Guilds = append(authUser.Guilds, *guild)
 		}
@@ -1492,14 +1492,14 @@ func TestHandler_JoinGuild(t *testing.T) {
 		mockSocketService.AssertNotCalled(t, "EmitAddMember")
 	})
 
-	t.Run("User is already in 100 guilds", func(t *testing.T) {
+	t.Run("User is already in the maximum number of guilds", func(t *testing.T) {
 		mockGuildService := new(mocks.GuildService)
 		mockSocketService := new(mocks.SocketService)
 
 		rr := httptest.NewRecorder()
 
 		newAuthUser := fixture.GetMockUser()
-		for i := 0; i < 100; i++ {
+		for i := 0; i < model.MaximumGuilds; i++ {
 			mockGuild := fixture.GetMockGuild("")
 			newAuthUser.Guilds = append(newAuthUser.Guilds, *mockGuild)
 		}
