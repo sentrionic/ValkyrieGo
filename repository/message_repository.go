@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/sentrionic/valkyrie/model"
+	"github.com/sentrionic/valkyrie/model/apperrors"
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
@@ -143,8 +145,13 @@ func (r *messageRepository) GetMessages(userId string, channel *model.Channel, c
 }
 
 // CreateMessage inserts the message in the DB
-func (r *messageRepository) CreateMessage(message *model.Message) error {
-	return r.DB.Create(&message).Error
+func (r *messageRepository) CreateMessage(message *model.Message) (*model.Message, error) {
+	if result := r.DB.Create(&message); result.Error != nil {
+		log.Printf("Could not create a message for user: %v. Reason: %v\n", message.UserId, result.Error)
+		return nil, apperrors.NewInternal()
+	}
+
+	return message, nil
 }
 
 // UpdateMessage updates the message in the DB

@@ -14,18 +14,27 @@ type MessageService struct {
 	mock.Mock
 }
 
-// CreateMessage provides a mock function with given fields: message
-func (_m *MessageService) CreateMessage(message *model.Message) error {
-	ret := _m.Called(message)
+// CreateMessage provides a mock function with given fields: params
+func (_m *MessageService) CreateMessage(params *model.Message) (*model.Message, error) {
+	ret := _m.Called(params)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.Message) error); ok {
-		r0 = rf(message)
+	var r0 *model.Message
+	if rf, ok := ret.Get(0).(func(*model.Message) *model.Message); ok {
+		r0 = rf(params)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Message)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*model.Message) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // DeleteMessage provides a mock function with given fields: message

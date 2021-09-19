@@ -50,7 +50,7 @@ func NewMultipartImage(fileName string, contentType string) *MultipartImage {
 	h := make(textproto.MIMEHeader)
 	h.Set(
 		"Content-Disposition",
-		fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "imageFile", fileName),
+		fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "file", fileName),
 	)
 	h.Set("Content-Type", contentType)
 	part, _ := writer.CreatePart(h)
@@ -71,7 +71,7 @@ func (m *MultipartImage) GetFormFile() *multipart.FileHeader {
 	_, params, _ := mime.ParseMediaType(m.ContentType)
 	mr := multipart.NewReader(m.MultipartBody, params["boundary"])
 	form, _ := mr.ReadForm(1024)
-	files := form.File["imageFile"]
+	files := form.File["file"]
 
 	return files[0]
 }

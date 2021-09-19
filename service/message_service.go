@@ -39,14 +39,14 @@ func (m *messageService) GetMessages(userId string, channel *model.Channel, curs
 	return m.MessageRepository.GetMessages(userId, channel, cursor)
 }
 
-func (m *messageService) CreateMessage(message *model.Message) error {
+func (m *messageService) CreateMessage(params *model.Message) (*model.Message, error) {
 	id, err := GenerateId()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	message.ID = id
+	params.ID = id
 
-	return m.MessageRepository.CreateMessage(message)
+	return m.MessageRepository.CreateMessage(params)
 }
 
 func (m *messageService) UpdateMessage(message *model.Message) error {

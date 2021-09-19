@@ -41,7 +41,7 @@ type Attachment struct {
 // any service it interacts with to implement
 type MessageService interface {
 	GetMessages(userId string, channel *Channel, cursor string) (*[]MessageResponse, error)
-	CreateMessage(message *Message) error
+	CreateMessage(params *Message) (*Message, error)
 	UpdateMessage(message *Message) error
 	DeleteMessage(message *Message) error
 	UploadFile(header *multipart.FileHeader, channelId string) (*Attachment, error)
@@ -52,7 +52,7 @@ type MessageService interface {
 // any repository it interacts with to implement
 type MessageRepository interface {
 	GetMessages(userId string, channel *Channel, cursor string) (*[]MessageResponse, error)
-	CreateMessage(message *Message) error
+	CreateMessage(params *Message) (*Message, error)
 	UpdateMessage(message *Message) error
 	DeleteMessage(message *Message) error
 	GetById(messageId string) (*Message, error)

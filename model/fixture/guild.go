@@ -21,15 +21,3 @@ func GetMockGuild(uid string) *model.Guild {
 		OwnerId: ownerId,
 	}
 }
-
-func GetGuildMember(guildId string) *model.Member {
-	return &model.Member{
-		UserID:    RandID(),
-		GuildID:   guildId,
-		Nickname:  nil,
-		Color:     nil,
-		LastSeen:  time.Now(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-}

@@ -97,25 +97,6 @@ type messageRequest struct {
 func (h *Handler) CreateMessage(c *gin.Context) {
 	channelId := c.Param("channelId")
 	userId := c.MustGet("userId").(string)
-	channel, err := h.channelService.Get(channelId)
-
-	if err != nil {
-		e := apperrors.NewNotFound("channel", channelId)
-		c.JSON(e.Status(), gin.H{
-			"error": e.Message,
-		})
-		return
-	}
-
-	// Check if the user has access to said channel
-	err = h.channelService.IsChannelMember(channel, userId)
-
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": err,
-		})
-		return
-	}
 
 	var req messageRequest
 	// Bind incoming json to struct and check for validation errors
@@ -138,15 +119,35 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		return
 	}
 
+	channel, err := h.channelService.Get(channelId)
+
+	if err != nil {
+		e := apperrors.NewNotFound("channel", channelId)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
+		return
+	}
+
+	// Check if the user has access to said channel
+	err = h.channelService.IsChannelMember(channel, userId)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": err,
+		})
+		return
+	}
+
 	author, _ := h.userService.Get(userId)
 
-	message := model.Message{
+	params := model.Message{
 		UserId:    userId,
 		ChannelId: channel.ID,
 	}
 
 	if req.Text != nil {
-		message.Text = req.Text
+		params.Text = req.Text
 	}
 
 	if req.File != nil {
@@ -192,10 +193,12 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		//	})
 		//	return
 		//}
-		message.Attachment = attachment
+		params.Attachment = attachment
 	}
 
-	if err := h.messageService.CreateMessage(&message); err != nil {
+	message, err := h.messageService.CreateMessage(&params)
+
+	if err != nil {
 		log.Printf("Failed to create message: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
@@ -243,7 +246,7 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		h.socketService.EmitNewNotification(*channel.GuildID, channelId)
 	}
 
-	c.JSON(http.StatusOK, true)
+	c.JSON(http.StatusCreated, true)
 }
 
 // EditMessage edits the given message with the given text
@@ -260,6 +263,20 @@ func (h *Handler) EditMessage(c *gin.Context) {
 	messageId := c.Param("messageId")
 	userId := c.MustGet("userId").(string)
 
+	var req messageRequest
+	// Bind incoming json to struct and check for validation errors
+	if ok := bindData(c, &req); !ok {
+		return
+	}
+
+	if req.Text == nil || len(*req.Text) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": apperrors.InvalidRequestParameters,
+			"errors":  apperrors.TextRequiredError,
+		})
+		return
+	}
+
 	message, err := h.messageService.Get(messageId)
 
 	if err != nil {
@@ -274,20 +291,6 @@ func (h *Handler) EditMessage(c *gin.Context) {
 	if message.UserId != userId {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": apperrors.EditMessageError,
-		})
-		return
-	}
-
-	var req messageRequest
-	// Bind incoming json to struct and check for validation errors
-	if ok := bindData(c, &req); !ok {
-		return
-	}
-
-	if message.Text == nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": apperrors.InvalidRequestParameters,
-			"errors":  apperrors.TextRequiredError,
 		})
 		return
 	}
