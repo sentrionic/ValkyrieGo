@@ -71,6 +71,10 @@ Once the server is running go to `localhost:<PORT>/swagger/index.html` to see al
 and `localhost:<PORT>` for all the websocket events.
 
 ## Tests
+All routes in `handler` have tests written for them.
+
+Only services that do not just delegate work to the repository have tests written for them.
+
 Run `go test -v -cover ./...` (`make test`) to run all tests
 
 ## Credits

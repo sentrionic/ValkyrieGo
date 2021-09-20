@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"github.com/sentrionic/valkyrie/mocks"
 	"github.com/sentrionic/valkyrie/model"
@@ -193,7 +194,7 @@ func TestLogin(t *testing.T) {
 		user, err := us.Login(mockUserResp.Email, invalidPW)
 
 		assert.Error(t, err)
-		assert.EqualError(t, err, "Invalid email and password combination")
+		assert.EqualError(t, err, apperrors.InvalidCredentials)
 		assert.Nil(t, user)
 		mockUserRepository.AssertCalled(t, "FindByEmail", mockArgs...)
 	})
@@ -457,5 +458,223 @@ func TestUserService_ChangeAvatar(t *testing.T) {
 		assert.Error(t, err)
 		mockFileRepository.AssertCalled(t, "UploadAvatar", uploadFileArgs...)
 		mockUserRepository.AssertCalled(t, "Update", updateArgs...)
+	})
+}
+
+func TestUserService_ChangePassword(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		mockUser := fixture.GetMockUser()
+		currentPassword := mockUser.Password
+
+		hashedPassword, err := hashPassword(currentPassword)
+		assert.NoError(t, err)
+		mockUser.Password = hashedPassword
+		newPassword := fixture.RandStringRunes(10)
+
+		mockUserRepository := new(mocks.UserRepository)
+		us := NewUserService(&USConfig{UserRepository: mockUserRepository})
+
+		mockUserRepository.On("Update", mockUser).Return(nil)
+
+		err = us.ChangePassword(currentPassword, newPassword, mockUser)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, mockUser.Password, newPassword)
+		assert.NotEqual(t, mockUser.Password, hashedPassword)
+
+		mockUserRepository.AssertExpectations(t)
+	})
+
+	t.Run("Error verifying password", func(t *testing.T) {
+		mockUser := fixture.GetMockUser()
+		currentPassword := mockUser.Password
+		newPassword := fixture.RandStringRunes(10)
+
+		mockUserRepository := new(mocks.UserRepository)
+		us := NewUserService(&USConfig{UserRepository: mockUserRepository})
+
+		err := us.ChangePassword(currentPassword, newPassword, mockUser)
+		assert.Error(t, err)
+
+		assert.Equal(t, err, apperrors.NewInternal())
+
+		mockUserRepository.AssertNotCalled(t, "Update")
+	})
+
+	t.Run("Current Password is incorrect", func(t *testing.T) {
+		mockUser := fixture.GetMockUser()
+		currentPassword := fixture.RandStringRunes(10)
+
+		hashedPassword, err := hashPassword(mockUser.Password)
+		assert.NoError(t, err)
+		mockUser.Password = hashedPassword
+		newPassword := fixture.RandStringRunes(10)
+
+		mockUserRepository := new(mocks.UserRepository)
+		us := NewUserService(&USConfig{UserRepository: mockUserRepository})
+
+		err = us.ChangePassword(currentPassword, newPassword, mockUser)
+		assert.Error(t, err)
+
+		assert.Equal(t, err, apperrors.NewAuthorization(apperrors.InvalidCredentials))
+
+		mockUserRepository.AssertNotCalled(t, "Update")
+	})
+
+	t.Run("Error returned from the repository", func(t *testing.T) {
+		mockUser := fixture.GetMockUser()
+		currentPassword := mockUser.Password
+
+		hashedPassword, err := hashPassword(currentPassword)
+		assert.NoError(t, err)
+		mockUser.Password = hashedPassword
+		newPassword := fixture.RandStringRunes(10)
+
+		mockUserRepository := new(mocks.UserRepository)
+		us := NewUserService(&USConfig{UserRepository: mockUserRepository})
+
+		mockError := apperrors.NewInternal()
+		mockUserRepository.On("Update", mockUser).Return(mockError)
+
+		err = us.ChangePassword(currentPassword, newPassword, mockUser)
+		assert.Error(t, err)
+
+		mockUserRepository.AssertExpectations(t)
+	})
+}
+
+func TestUserService_ForgotPassword(t *testing.T) {
+	mockUser := fixture.GetMockUser()
+	token := fixture.RandStringRunes(10)
+
+	t.Run("Success", func(t *testing.T) {
+		mockRedisRepository := new(mocks.RedisRepository)
+		mockMailRepository := new(mocks.MailRepository)
+
+		us := NewUserService(&USConfig{
+			RedisRepository: mockRedisRepository,
+			MailRepository:  mockMailRepository,
+		})
+
+		mockRedisRepository.On("SetResetToken", mock.Anything, mockUser.ID).Return(token, nil)
+		mockMailRepository.On("SendResetMail", mockUser.Email, token).Return(nil)
+
+		err := us.ForgotPassword(context.TODO(), mockUser)
+		assert.NoError(t, err)
+
+		mockRedisRepository.AssertExpectations(t)
+		mockMailRepository.AssertExpectations(t)
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		mockRedisRepository := new(mocks.RedisRepository)
+		mockMailRepository := new(mocks.MailRepository)
+
+		us := NewUserService(&USConfig{
+			RedisRepository: mockRedisRepository,
+			MailRepository:  mockMailRepository,
+		})
+
+		mockError := apperrors.NewInternal()
+		mockRedisRepository.On("SetResetToken", mock.Anything, mockUser.ID).Return("", mockError)
+
+		err := us.ForgotPassword(context.TODO(), mockUser)
+		assert.Error(t, err)
+
+		mockRedisRepository.AssertExpectations(t)
+		mockMailRepository.AssertNotCalled(t, "SendResetMail")
+	})
+}
+
+func TestUserService_ResetPassword(t *testing.T) {
+	mockUser := fixture.GetMockUser()
+	password := fixture.RandStr(10)
+	token := fixture.RandStr(10)
+
+	t.Run("Success", func(t *testing.T) {
+		mockUserRepository := new(mocks.UserRepository)
+		mockRedisRepository := new(mocks.RedisRepository)
+
+		us := NewUserService(&USConfig{
+			UserRepository:  mockUserRepository,
+			RedisRepository: mockRedisRepository,
+		})
+
+		mockRedisRepository.On("GetIdFromToken", mock.Anything, token).Return(mockUser.ID, nil)
+		mockUserRepository.On("FindByID", mockUser.ID).Return(mockUser, nil)
+		mockUserRepository.On("Update", mockUser).Return(nil)
+
+		user, err := us.ResetPassword(context.TODO(), password, token)
+		assert.NoError(t, err)
+		assert.NotNil(t, user)
+
+		mockUserRepository.AssertExpectations(t)
+		mockRedisRepository.AssertExpectations(t)
+	})
+
+	t.Run("No id found", func(t *testing.T) {
+		mockUserRepository := new(mocks.UserRepository)
+		mockRedisRepository := new(mocks.RedisRepository)
+
+		us := NewUserService(&USConfig{
+			UserRepository:  mockUserRepository,
+			RedisRepository: mockRedisRepository,
+		})
+
+		mockError := apperrors.NewInternal()
+		mockRedisRepository.On("GetIdFromToken", mock.Anything, token).Return("", mockError)
+
+		user, err := us.ResetPassword(context.TODO(), password, token)
+		assert.Error(t, err)
+		assert.Nil(t, user)
+
+		mockRedisRepository.AssertCalled(t, "GetIdFromToken", mock.Anything, token)
+		mockUserRepository.AssertNotCalled(t, "FindByID")
+		mockUserRepository.AssertNotCalled(t, "Update")
+	})
+
+	t.Run("No user found", func(t *testing.T) {
+		mockUserRepository := new(mocks.UserRepository)
+		mockRedisRepository := new(mocks.RedisRepository)
+		id := fixture.RandID()
+
+		us := NewUserService(&USConfig{
+			UserRepository:  mockUserRepository,
+			RedisRepository: mockRedisRepository,
+		})
+
+		mockError := apperrors.NewInternal()
+		mockRedisRepository.On("GetIdFromToken", mock.Anything, token).Return(id, nil)
+		mockUserRepository.On("FindByID", id).Return(nil, mockError)
+
+		user, err := us.ResetPassword(context.TODO(), password, token)
+		assert.Error(t, err)
+		assert.Nil(t, user)
+
+		mockRedisRepository.AssertCalled(t, "GetIdFromToken", mock.Anything, token)
+		mockUserRepository.AssertCalled(t, "FindByID", id)
+		mockUserRepository.AssertNotCalled(t, "Update")
+	})
+
+	t.Run("Error returned from the repository", func(t *testing.T) {
+		mockUserRepository := new(mocks.UserRepository)
+		mockRedisRepository := new(mocks.RedisRepository)
+		mockError := apperrors.NewInternal()
+
+		us := NewUserService(&USConfig{
+			UserRepository:  mockUserRepository,
+			RedisRepository: mockRedisRepository,
+		})
+
+		mockRedisRepository.On("GetIdFromToken", mock.Anything, token).Return(mockUser.ID, nil)
+		mockUserRepository.On("FindByID", mockUser.ID).Return(mockUser, nil)
+		mockUserRepository.On("Update", mockUser).Return(mockError)
+
+		user, err := us.ResetPassword(context.TODO(), password, token)
+		assert.Error(t, err)
+		assert.Nil(t, user)
+
+		mockUserRepository.AssertExpectations(t)
+		mockRedisRepository.AssertExpectations(t)
 	})
 }

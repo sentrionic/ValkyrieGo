@@ -123,7 +123,7 @@ func (c *channelService) IsChannelMember(channel *model.Channel, userId string) 
 			id, err := c.ChannelRepository.FindDMByUserAndChannelId(channel.ID, userId)
 
 			if err != nil || id == "" {
-				return apperrors.NewAuthorization("Not Authorized")
+				return apperrors.NewAuthorization(apperrors.Unauthorized)
 			}
 			return nil
 		}
@@ -133,13 +133,13 @@ func (c *channelService) IsChannelMember(channel *model.Channel, userId string) 
 				return nil
 			}
 		}
-		return apperrors.NewAuthorization("Not Authorized")
+		return apperrors.NewAuthorization(apperrors.Unauthorized)
 
 		// Check if user has access to the channel
 	} else {
 		member, err := c.GuildRepository.GetMember(userId, *channel.GuildID)
 		if err != nil || member.ID == "" {
-			return apperrors.NewAuthorization("Not Authorized")
+			return apperrors.NewAuthorization(apperrors.Unauthorized)
 		}
 		return nil
 	}

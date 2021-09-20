@@ -43,9 +43,7 @@ func NewUserService(c *USConfig) model.UserService {
 
 // Get retrieves a user based on their uid
 func (s *userService) Get(uid string) (*model.User, error) {
-	u, err := s.UserRepository.FindByID(uid)
-
-	return u, err
+	return s.UserRepository.FindByID(uid)
 }
 
 // GetByEmail retrieves a user based on their email
@@ -54,14 +52,13 @@ func (s *userService) GetByEmail(email string) (*model.User, error) {
 	// Sanitize email
 	email = strings.ToLower(email)
 	email = strings.TrimSpace(email)
-	u, err := s.UserRepository.FindByEmail(email)
 
-	return u, err
+	return s.UserRepository.FindByEmail(email)
 }
 
 // Register creates a user
 func (s *userService) Register(user *model.User) (*model.User, error) {
-	pw, err := hashPassword(user.Password)
+	hashedPassword, err := hashPassword(user.Password)
 
 	if err != nil {
 		log.Printf("Unable to signup user for email: %v\n", user.Email)
@@ -69,14 +66,14 @@ func (s *userService) Register(user *model.User) (*model.User, error) {
 	}
 
 	// Sanitize fields
-	user.Password = pw
+	user.Password = hashedPassword
 	user.Username = strings.TrimSpace(user.Username)
 	user.Email = strings.TrimSpace(user.Email)
 	user.Email = strings.ToLower(user.Email)
 
 	id, _ := GenerateId()
 	user.ID = id
-	user.Image = fmt.Sprintf("https://gravatar.com/avatar/%s?d=identicon", getMD5Hash(user.Email))
+	user.Image = generateAvatar(user.Email)
 
 	return s.UserRepository.Create(user)
 }
@@ -90,7 +87,7 @@ func (s *userService) Login(email, password string) (*model.User, error) {
 
 	// Will return NotAuthorized to client to omit details of why
 	if err != nil {
-		return nil, apperrors.NewAuthorization("Invalid email and password combination")
+		return nil, apperrors.NewAuthorization(apperrors.InvalidCredentials)
 	}
 
 	// verify
@@ -104,17 +101,16 @@ func (s *userService) Login(email, password string) (*model.User, error) {
 }
 
 func (s *userService) UpdateAccount(u *model.User) error {
-	err := s.UserRepository.Update(u)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.UserRepository.Update(u)
 }
 
 func (s *userService) IsEmailAlreadyInUse(email string) bool {
-	user, _ := s.UserRepository.FindByEmail(email)
+	user, err := s.UserRepository.FindByEmail(email)
+
+	if err != nil {
+		return true
+	}
+
 	return user.ID != ""
 }
 
@@ -126,27 +122,23 @@ func (s *userService) DeleteImage(key string) error {
 	return s.FileRepository.DeleteImage(key)
 }
 
-func (s *userService) ChangePassword(currentPassword, newPassword string, u *model.User) error {
-	err := verifyPassword(currentPassword, u.Password)
+func (s *userService) ChangePassword(currentPassword, newPassword string, user *model.User) error {
+	err := verifyPassword(currentPassword, user.Password)
 
 	if err != nil {
 		return err
 	}
 
-	pw, err := hashPassword(newPassword)
+	hashedPassword, err := hashPassword(newPassword)
 
 	if err != nil {
-		log.Printf("Unable to signup user for email: %v\n", u.Email)
+		log.Printf("Unable to change password for email: %v\n", user.Email)
 		return apperrors.NewInternal()
 	}
 
-	u.Password = pw
+	user.Password = hashedPassword
 
-	if err := s.UserRepository.Update(u); err != nil {
-		return err
-	}
-
-	return nil
+	return s.UserRepository.Update(user)
 }
 
 func (s *userService) ForgotPassword(ctx context.Context, user *model.User) error {
@@ -156,9 +148,7 @@ func (s *userService) ForgotPassword(ctx context.Context, user *model.User) erro
 		return err
 	}
 
-	err = s.MailRepository.SendResetMail(user.Email, token)
-
-	return err
+	return s.MailRepository.SendResetMail(user.Email, token)
 }
 
 func (s *userService) ResetPassword(ctx context.Context, password string, token string) (*model.User, error) {
@@ -174,14 +164,14 @@ func (s *userService) ResetPassword(ctx context.Context, password string, token 
 		return nil, err
 	}
 
-	pw, err := hashPassword(password)
+	hashedPassword, err := hashPassword(password)
 
 	if err != nil {
 		log.Printf("Unable to reset password")
 		return nil, apperrors.NewInternal()
 	}
 
-	user.Password = pw
+	user.Password = hashedPassword
 
 	if err := s.UserRepository.Update(user); err != nil {
 		return nil, err
@@ -198,10 +188,10 @@ func (s *userService) GetRequestCount(userId string) (*int64, error) {
 	return s.UserRepository.GetRequestCount(userId)
 }
 
-// getMD5Hash returns the MD5 hash as a string for the given input
-func getMD5Hash(email string) string {
+// generateAvatar returns an gravatar using the md5 hash of the email
+func generateAvatar(email string) string {
 	hash := md5.Sum([]byte(email))
-	return hex.EncodeToString(hash[:])
+	return fmt.Sprintf("https://gravatar.com/avatar/%s?d=identicon", hex.EncodeToString(hash[:]))
 }
 
 // verifyPassword checks if the given password and the user's stored password match and throws an error if they don't
@@ -213,7 +203,7 @@ func verifyPassword(password, hashedPassword string) error {
 	}
 
 	if !match {
-		return apperrors.NewAuthorization("Invalid email and password combination")
+		return apperrors.NewAuthorization(apperrors.InvalidCredentials)
 	}
 
 	return nil
