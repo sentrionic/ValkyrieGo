@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/sentrionic/valkyrie/model"
 	"gorm.io/driver/postgres"
@@ -52,21 +51,9 @@ func initDS() (*dataSources, error) {
 
 	// Initialize redis connection
 	redisURL := os.Getenv("REDIS_URL")
-
-	var opt *redis.Options
-
-	// Production url is of form redis://:password@host:port
-	if gin.Mode() == gin.ReleaseMode {
-		opt, err = redis.ParseURL(redisURL)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		opt = &redis.Options{
-			Addr:     redisURL,
-			Password: "",
-			DB:       0,
-		}
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		panic(err)
 	}
 
 	log.Printf("Connecting to Redis\n")

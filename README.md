@@ -47,8 +47,8 @@ or alternatively copy the commands into your CLI.
 - `Required`
 
         PORT=8080
-        DATABASE_URL="postgresql://<username>:<password>@localhost:5432/db_name"
-        REDIS_URL=localhost:6379
+        DATABASE_URL=postgresql://<username>:<password>@localhost:5432/valkyrie
+        REDIS_URL=redis://localhost:6379
         CORS_ORIGIN=http://localhost:3000
         SECRET=SUPERSECRET
         HANDLER_TIMEOUT=5
@@ -75,7 +75,10 @@ All routes in `handler` have tests written for them.
 
 Only services that do not just delegate work to the repository have tests written for them.
 
-Run `go test -v -cover ./...` (`make test`) to run all tests
+Run `go test -v -cover ./service/... ./handler/...` (`make test`) to run all tests
+
+Additionally this repository includes E2E tests for all successful requests. To run them you
+have to have Postgres and Redis running in Docker and then run `go test github.com/sentrionic/valkyrie` (`make e2e`).
 
 ## Credits
 [Jacob Goodwin](https://github.com/JacobSNGoodwin/memrizr): This backend is built upon his tutorial series and uses his backend structure

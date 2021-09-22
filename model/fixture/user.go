@@ -1,7 +1,6 @@
 package fixture
 
 import (
-	"fmt"
 	"github.com/sentrionic/valkyrie/model"
 	"time"
 )
@@ -17,6 +16,6 @@ func GetMockUser() *model.User {
 		Username: Username(),
 		Email:    email,
 		Password: RandStr(8),
-		Image:    fmt.Sprintf("https://gravatar.com/avatar/%s?d=identicon", getMD5Hash(email)),
+		Image:    generateAvatar(email),
 	}
 }

@@ -64,8 +64,8 @@ func RandStr(n int) string {
 	return RandStringRunes(n)
 }
 
-// getMD5Hash returns the MD5 hash as a string for the given input
-func getMD5Hash(email string) string {
+// generateAvatar returns an gravatar using the md5 hash of the email
+func generateAvatar(email string) string {
 	hash := md5.Sum([]byte(email))
-	return hex.EncodeToString(hash[:])
+	return fmt.Sprintf("https://gravatar.com/avatar/%s?d=identicon", hex.EncodeToString(hash[:]))
 }

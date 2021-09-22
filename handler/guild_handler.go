@@ -106,7 +106,7 @@ type createGuildRequest struct {
 // @Produce  json
 // @Param request body createGuildRequest true "Create Guild"
 // @Success 201 {array} model.GuildResponse
-// @Router /guilds [post]
+// @Router /guilds/create [post]
 func (h *Handler) CreateGuild(c *gin.Context) {
 	var req createGuildRequest
 
@@ -291,7 +291,7 @@ func (h *Handler) EditGuild(c *gin.Context) {
 // @Param guildId path string true "Guild ID"
 // @Param isPermanent query boolean false "Is Permanent"
 // @Success 200 string link
-// @Router /guilds/{guildId} [get]
+// @Router /guilds/{guildId}/invite [get]
 func (h *Handler) GetInvite(c *gin.Context) {
 	guildId := c.Param("guildId")
 	permanent := c.Query("isPermanent")

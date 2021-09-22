@@ -5,7 +5,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
-	gredis "github.com/go-redis/redis/v8"
 	cors "github.com/rs/cors/wrapper/gin"
 	"github.com/sentrionic/valkyrie/handler"
 	"github.com/sentrionic/valkyrie/handler/middleware"
@@ -87,18 +86,8 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	})
 	router.Use(c)
 
-	redisURL := os.Getenv("REDIS_URL")
-	password := ""
-
-	// Production url is of form redis://:password@host:port
-	if gin.Mode() == gin.ReleaseMode {
-		opt, err := gredis.ParseURL(redisURL)
-		if err != nil {
-			panic(err)
-		}
-		redisURL = opt.Addr
-		password = opt.Password
-	}
+	redisURL := d.RedisClient.Options().Addr
+	password := d.RedisClient.Options().Password
 
 	// initialize session store
 	secret := os.Getenv("SECRET")

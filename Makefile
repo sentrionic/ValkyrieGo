@@ -17,7 +17,10 @@ start:
 	docker start postgres12 && docker start redis
 
 test:
-	go test -v -cover ./...
+	go test -v -cover ./service/... ./handler/...
+
+e2e:
+	go test github.com/sentrionic/valkyrie
 
 lint:
 	golangci-lint run
