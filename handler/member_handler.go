@@ -2,10 +2,13 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
 	"net/http"
+	"strings"
 )
 
 /*
@@ -15,8 +18,14 @@ import (
 // memberReq contains the MemberId of the user
 // that needs to be moderated
 type memberReq struct {
-	MemberId string `json:"memberId" binding:"required"`
+	MemberId string `json:"memberId"`
 } //@name MemberRequest
+
+func (r memberReq) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.MemberId, validation.Required, is.UTFDigit),
+	)
+}
 
 // GetMemberSettings gets the current user's role color and nickname
 // for the given guild
@@ -26,6 +35,7 @@ type memberReq struct {
 // @Produce  json
 // @Param guildId path string true "Guild ID"
 // @Success 200 {object} model.MemberSettings
+// @Failure 404 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/member [get]
 func (h *Handler) GetMemberSettings(c *gin.Context) {
 	guildId := c.Param("guildId")
@@ -56,6 +66,25 @@ func (h *Handler) GetMemberSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, settings)
 }
 
+type memberSettingsReq struct {
+	Nickname *string `json:"nickname"`
+	Color    *string `json:"color"`
+} //@name MemberSettingsRequest
+
+func (r memberSettingsReq) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Nickname, validation.NilOrNotEmpty, validation.Length(3, 30)),
+		validation.Field(&r.Color, validation.NilOrNotEmpty, is.HexColor),
+	)
+}
+
+func (r *memberSettingsReq) sanitize() {
+	if r.Nickname != nil {
+		nickname := strings.TrimSpace(*r.Nickname)
+		r.Nickname = &nickname
+	}
+}
+
 // EditMemberSettings changes the current user's role color and nickname
 // for the given guild
 // EditMemberSettings godoc
@@ -63,16 +92,21 @@ func (h *Handler) GetMemberSettings(c *gin.Context) {
 // @Summary Edit Member Settings
 // @Accepts json
 // @Produce  json
-// @Param request body  model.MemberSettings true "Edit Member"
+// @Param request body memberSettingsReq true "Edit Member"
 // @Param guildId path string true "Guild ID"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/member [put]
 func (h *Handler) EditMemberSettings(c *gin.Context) {
-	var req model.MemberSettings
+	var req memberSettingsReq
 
 	if ok := bindData(c, &req); !ok {
 		return
 	}
+
+	req.sanitize()
 
 	guildId := c.Param("guildId")
 	guild, err := h.guildService.GetGuild(guildId)
@@ -98,7 +132,12 @@ func (h *Handler) EditMemberSettings(c *gin.Context) {
 		return
 	}
 
-	err = h.guildService.UpdateMemberSettings(&req, userId, guildId)
+	settings := &model.MemberSettings{
+		Nickname: req.Nickname,
+		Color:    req.Color,
+	}
+
+	err = h.guildService.UpdateMemberSettings(settings, userId, guildId)
 
 	if err != nil {
 		log.Printf("Unable to update settings for user: %v\n%v", userId, err)
@@ -120,6 +159,9 @@ func (h *Handler) EditMemberSettings(c *gin.Context) {
 // @Produce  json
 // @Param guildId path string true "Guild ID"
 // @Success 200 {array} model.BanResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/bans [get]
 func (h *Handler) GetBanList(c *gin.Context) {
 	guildId := c.Param("guildId")
@@ -137,8 +179,9 @@ func (h *Handler) GetBanList(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.MustBeOwner,
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -146,7 +189,6 @@ func (h *Handler) GetBanList(c *gin.Context) {
 	bans, err := h.guildService.GetBanList(guildId)
 
 	if err != nil {
-		log.Printf("Failed to get banned members: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -171,6 +213,10 @@ func (h *Handler) GetBanList(c *gin.Context) {
 // @Param guildId path string true "Guild ID"
 // @Param request body memberReq true "Member ID"
 // @Success 200 {array} model.Success
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/bans [post]
 func (h *Handler) BanMember(c *gin.Context) {
 	var req memberReq
@@ -194,8 +240,9 @@ func (h *Handler) BanMember(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.MustBeOwner,
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -213,16 +260,16 @@ func (h *Handler) BanMember(c *gin.Context) {
 	}
 
 	if member.ID == userId {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.BanYourselfError,
+		e := apperrors.NewBadRequest(apperrors.BanYourselfError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
 
 	guild.Bans = append(guild.Bans, *member)
 
-	if err := h.guildService.UpdateGuild(guild); err != nil {
-		log.Printf("Failed to ban member: %v\n", err.Error())
+	if err = h.guildService.UpdateGuild(guild); err != nil {
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -254,6 +301,10 @@ func (h *Handler) BanMember(c *gin.Context) {
 // @Param guildId path string true "Guild ID"
 // @Param request body memberReq true "Member ID"
 // @Success 200 {array} model.Success
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/bans [delete]
 func (h *Handler) UnbanMember(c *gin.Context) {
 	var req memberReq
@@ -277,15 +328,17 @@ func (h *Handler) UnbanMember(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.MustBeOwner,
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
 
 	if req.MemberId == userId {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.UnbanYourselfError,
+		e := apperrors.NewBadRequest(apperrors.UnbanYourselfError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -309,6 +362,10 @@ func (h *Handler) UnbanMember(c *gin.Context) {
 // @Param guildId path string true "Guild ID"
 // @Param request body memberReq true "Member ID"
 // @Success 200 {array} model.Success
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/kick [post]
 func (h *Handler) KickMember(c *gin.Context) {
 	var req memberReq
@@ -332,8 +389,9 @@ func (h *Handler) KickMember(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.MustBeOwner,
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -351,8 +409,9 @@ func (h *Handler) KickMember(c *gin.Context) {
 	}
 
 	if member.ID == userId {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.KickYourselfError,
+		e := apperrors.NewBadRequest(apperrors.KickYourselfError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}

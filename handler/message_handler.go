@@ -3,12 +3,14 @@ package handler
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	gonanoid "github.com/matoous/go-nanoid"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -25,6 +27,8 @@ import (
 // @Param channelId path string true "Channel ID"
 // @Param cursor query string false "Cursor Pagination using the createdAt field"
 // @Success 200 {array} model.MessageResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /messages/{channelId} [get]
 func (h *Handler) GetMessages(c *gin.Context) {
 	channelId := c.Param("channelId")
@@ -45,7 +49,7 @@ func (h *Handler) GetMessages(c *gin.Context) {
 	err = h.channelService.IsChannelMember(channel, userId)
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
 		return
@@ -79,10 +83,28 @@ func (h *Handler) GetMessages(c *gin.Context) {
 // Either text or file must be provided
 type messageRequest struct {
 	// Maximum 2000 characters
-	Text *string `form:"text" binding:"omitempty,lte=2000"`
+	Text *string `form:"text"`
 	// image/* or audio/*
-	File *multipart.FileHeader `form:"file" binding:"omitempty" swaggertype:"string" format:"binary"`
+	File *multipart.FileHeader `form:"file" swaggertype:"string" format:"binary"`
 } //@name MessageRequest
+
+func (r messageRequest) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Text,
+			validation.NilOrNotEmpty,
+			validation.Required.When(r.File == nil).
+				Error(apperrors.MessageOrFileRequired),
+			validation.Length(1, 2000),
+		),
+	)
+}
+
+func (r *messageRequest) sanitize() {
+	if r.Text != nil {
+		text := strings.TrimSpace(*r.Text)
+		r.Text = &text
+	}
+}
 
 // CreateMessage creates a message in the given channel
 // CreateMessage godoc
@@ -92,7 +114,11 @@ type messageRequest struct {
 // @Produce  json
 // @Param channelId path string true "Channel ID"
 // @Param request body messageRequest true "Create Message"
-// @Success 200 {object} model.Success
+// @Success 201 {object} model.Success
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /messages/{channelId} [post]
 func (h *Handler) CreateMessage(c *gin.Context) {
 	channelId := c.Param("channelId")
@@ -104,20 +130,7 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		return
 	}
 
-	// Either text or file must be provided
-	if req.Text == nil && req.File == nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.MessageOrFileRequired,
-		})
-		return
-	}
-
-	if req.Text != nil && len(*req.Text) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.MessageEmptyError,
-		})
-		return
-	}
+	req.sanitize()
 
 	channel, err := h.channelService.Get(channelId)
 
@@ -133,32 +146,34 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 	err = h.channelService.IsChannelMember(channel, userId)
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
 		return
 	}
 
-	author, _ := h.userService.Get(userId)
+	author, err := h.userService.Get(userId)
+
+	if err != nil {
+		e := apperrors.NewNotFound("user", userId)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
+		return
+	}
 
 	params := model.Message{
 		UserId:    userId,
 		ChannelId: channel.ID,
 	}
 
-	if req.Text != nil {
-		params.Text = req.Text
-	}
+	params.Text = req.Text
 
 	if req.File != nil {
 		mimeType := req.File.Header.Get("Content-Type")
 
 		if valid := isAllowedFileType(mimeType); !valid {
-			log.Println("File is not an allowable mime-type")
-			e := apperrors.NewBadRequest(apperrors.InvalidMimeType)
-			c.JSON(e.Status(), gin.H{
-				"error": e,
-			})
+			toFieldErrorResponse(c, "File", apperrors.InvalidImageType)
 			return
 		}
 
@@ -177,8 +192,7 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 			attachment, err = h.messageService.UploadFile(req.File, channel.ID)
 
 			if err != nil {
-				fmt.Println(err)
-				c.JSON(http.StatusInternalServerError, gin.H{
+				c.JSON(apperrors.Status(err), gin.H{
 					"error": err,
 				})
 				return
@@ -258,6 +272,10 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 // @Param messageId path string true "Message ID"
 // @Param request body messageRequest true "Edit Message"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /messages/{messageId} [put]
 func (h *Handler) EditMessage(c *gin.Context) {
 	messageId := c.Param("messageId")
@@ -266,14 +284,6 @@ func (h *Handler) EditMessage(c *gin.Context) {
 	var req messageRequest
 	// Bind incoming json to struct and check for validation errors
 	if ok := bindData(c, &req); !ok {
-		return
-	}
-
-	if req.Text == nil || len(*req.Text) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": apperrors.InvalidRequestParameters,
-			"errors":  apperrors.TextRequiredError,
-		})
 		return
 	}
 
@@ -289,8 +299,9 @@ func (h *Handler) EditMessage(c *gin.Context) {
 	}
 
 	if message.UserId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.EditMessageError,
+		e := apperrors.NewAuthorization(apperrors.EditMessageError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -329,6 +340,9 @@ func (h *Handler) EditMessage(c *gin.Context) {
 // @Produce  json
 // @Param messageId path string true "Message ID"
 // @Success 200 {object} model.Success
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /messages/{messageId} [delete]
 func (h *Handler) DeleteMessage(c *gin.Context) {
 	messageId := c.Param("messageId")
@@ -369,22 +383,24 @@ func (h *Handler) DeleteMessage(c *gin.Context) {
 		}
 
 		if message.UserId != userId && guild.OwnerId != userId {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": apperrors.DeleteMessageError,
+			e := apperrors.NewAuthorization(apperrors.DeleteMessageError)
+			c.JSON(e.Status(), gin.H{
+				"error": e,
 			})
 			return
 		}
 		// Only message author check required
 	} else {
 		if message.UserId != userId {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": apperrors.DeleteDMMessageError,
+			e := apperrors.NewAuthorization(apperrors.DeleteDMMessageError)
+			c.JSON(e.Status(), gin.H{
+				"error": e,
 			})
 			return
 		}
 	}
 
-	if err := h.messageService.DeleteMessage(message); err != nil {
+	if err = h.messageService.DeleteMessage(message); err != nil {
 		log.Printf("Failed to delete message: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,

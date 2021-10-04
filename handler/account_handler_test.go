@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func TestHandler_Me(t *testing.T) {
+func TestHandler_GetCurrent(t *testing.T) {
 	// Setup
 	gin.SetMode(gin.TestMode)
 
@@ -295,10 +295,7 @@ func TestHandler_EditAccount(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
-		respBody, _ := json.Marshal(gin.H{
-			"field":   "Email",
-			"message": apperrors.DuplicateEmail,
-		})
+		respBody, _ := json.Marshal(getTestFieldErrorResponse("Email", apperrors.DuplicateEmail))
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())

@@ -2,7 +2,7 @@
 
 # ValkyrieGO
 
-<p style="text-align: center;">
+<p align="center">
   <img src="https://harmony-cdn.s3.eu-central-1.amazonaws.com/logo.png" alt="Valkyrie Logo">
 </p>
 
@@ -14,7 +14,7 @@ A [Discord](https://discord.com) backend clone written in Golang.
 
 - Message, Channel, Server CRUD
 - Authentication using Sessions
-- Channel / Websocket Member Protection
+- Channel / Websockets Member Protection
 - Realtime Events
 - File Upload (Avatar, Icon, Messages) to S3
 - Direct Messaging
@@ -46,7 +46,7 @@ or alternatively copy the commands into your CLI.
 
 - `Required`
 
-        PORT=8080
+        PORT=4000
         DATABASE_URL=postgresql://<username>:<password>@localhost:5432/valkyrie
         REDIS_URL=redis://localhost:6379
         CORS_ORIGIN=http://localhost:3000
@@ -68,7 +68,7 @@ or alternatively copy the commands into your CLI.
 ## Endpoints
 
 Once the server is running go to `localhost:<PORT>/swagger/index.html` to see all the HTTP endpoints
-and `localhost:<PORT>` for all the websocket events.
+and `localhost:<PORT>` for all the websockets events.
 
 ## Tests
 All routes in `handler` have tests written for them.
@@ -83,4 +83,4 @@ have to have Postgres and Redis running in Docker and then run `go test github.c
 ## Credits
 [Jacob Goodwin](https://github.com/JacobSNGoodwin/memrizr): This backend is built upon his tutorial series and uses his backend structure
 
-[Jeroen de Kok](https://dev.to/jeroendk/building-a-simple-chat-application-with-websockets-in-go-and-vue-js-gao): The websocket structure is based on his tutorial
+[Jeroen de Kok](https://dev.to/jeroendk/building-a-simple-chat-application-with-websockets-in-go-and-vue-js-gao): The websockets structure is based on his tutorial

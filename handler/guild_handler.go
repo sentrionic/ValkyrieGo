@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/lib/pq"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
@@ -25,6 +26,7 @@ import (
 // @Summary Get Current User's Guilds
 // @Produce  json
 // @Success 200 {array} model.GuildResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /guilds [get]
 func (h *Handler) GetUserGuilds(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -51,6 +53,8 @@ func (h *Handler) GetUserGuilds(c *gin.Context) {
 // @Produce  json
 // @Param guildId path string true "Guild ID"
 // @Success 200 {array} model.MemberResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/members [get]
 func (h *Handler) GetGuildMembers(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -95,8 +99,18 @@ func (h *Handler) GetGuildMembers(c *gin.Context) {
 
 type createGuildRequest struct {
 	// Guild Name. 3 to 30 characters
-	Name string `json:"name" binding:"required,gte=3,lte=30"`
+	Name string `json:"name"`
 } //@name CreateGuildRequest
+
+func (r createGuildRequest) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Name, validation.Required, validation.Length(3, 30)),
+	)
+}
+
+func (r *createGuildRequest) sanitize() {
+	r.Name = strings.TrimSpace(r.Name)
+}
 
 // CreateGuild creates a guild
 // CreateGuild godoc
@@ -106,6 +120,9 @@ type createGuildRequest struct {
 // @Produce  json
 // @Param request body createGuildRequest true "Create Guild"
 // @Success 201 {array} model.GuildResponse
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/create [post]
 func (h *Handler) CreateGuild(c *gin.Context) {
 	var req createGuildRequest
@@ -114,6 +131,8 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 	if ok := bindData(c, &req); !ok {
 		return
 	}
+
+	req.sanitize()
 
 	userId := c.MustGet("userId").(string)
 
@@ -150,7 +169,6 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 	guild, err := h.guildService.CreateGuild(&guildParams)
 
 	if err != nil {
-		log.Printf("Failed to create guild: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -167,7 +185,7 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 	channel, err := h.channelService.CreateChannel(&channelParams)
 
 	if err != nil {
-		log.Printf("Failed to create guild: %v\n", err.Error())
+		log.Printf("Failed to create channel for guild: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -178,17 +196,27 @@ func (h *Handler) CreateGuild(c *gin.Context) {
 }
 
 // editGuildRequest specifies the form to edit the guild.
-// If Image is not nil then the guilds icon got changed.
+// If Image is not nil then the guild's icon got changed.
 // If Icon is not nil then the guild kept its old one.
 // If both are nil then the icon got reset.
 type editGuildRequest struct {
 	// Guild Name. 3 to 30 characters
-	Name string `form:"name" binding:"required,gte=3,lte=30"`
+	Name string `form:"name"`
 	// image/png or image/jpeg
-	Image *multipart.FileHeader `form:"image" binding:"omitempty" swaggertype:"string" format:"binary"`
+	Image *multipart.FileHeader `form:"image" swaggertype:"string" format:"binary"`
 	// The old guild icon url if no new image is selected. Set to null to reset the guild icon
-	Icon *string `form:"icon" binding:"omitempty"`
+	Icon *string `form:"icon"`
 } //@name EditGuildRequest
+
+func (r editGuildRequest) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Name, validation.Required, validation.Length(3, 30)),
+	)
+}
+
+func (r *editGuildRequest) sanitize() {
+	r.Name = strings.TrimSpace(r.Name)
+}
 
 // EditGuild edits the given guild
 // EditGuild godoc
@@ -199,6 +227,10 @@ type editGuildRequest struct {
 // @Param request body editGuildRequest true "Edit Guild"
 // @Param guildId path string true "Guild ID"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId} [put]
 func (h *Handler) EditGuild(c *gin.Context) {
 	var req editGuildRequest
@@ -207,6 +239,8 @@ func (h *Handler) EditGuild(c *gin.Context) {
 	if ok := bindData(c, &req); !ok {
 		return
 	}
+
+	req.sanitize()
 
 	userId := c.MustGet("userId").(string)
 	guildId := c.Param("guildId")
@@ -223,8 +257,9 @@ func (h *Handler) EditGuild(c *gin.Context) {
 	}
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.MustBeOwner,
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -237,10 +272,7 @@ func (h *Handler) EditGuild(c *gin.Context) {
 		mimeType := req.Image.Header.Get("Content-Type")
 
 		if valid := isAllowedImageType(mimeType); !valid {
-			e := apperrors.NewBadRequest(apperrors.InvalidImageType)
-			c.JSON(e.Status(), gin.H{
-				"error": e,
-			})
+			toFieldErrorResponse(c, "Image", apperrors.InvalidImageType)
 			return
 		}
 
@@ -248,9 +280,9 @@ func (h *Handler) EditGuild(c *gin.Context) {
 		url, err := h.userService.ChangeAvatar(req.Image, directory)
 
 		if err != nil {
-			fmt.Println(err)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err,
+			e := apperrors.NewInternal()
+			c.JSON(e.Status(), gin.H{
+				"error": e,
 			})
 			return
 		}
@@ -267,7 +299,7 @@ func (h *Handler) EditGuild(c *gin.Context) {
 		guild.Icon = nil
 	}
 
-	if err := h.guildService.UpdateGuild(guild); err != nil {
+	if err = h.guildService.UpdateGuild(guild); err != nil {
 		log.Printf("Failed to update guild: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
@@ -291,6 +323,10 @@ func (h *Handler) EditGuild(c *gin.Context) {
 // @Param guildId path string true "Guild ID"
 // @Param isPermanent query boolean false "Is Permanent"
 // @Success 200 string link
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/invite [get]
 func (h *Handler) GetInvite(c *gin.Context) {
 	guildId := c.Param("guildId")
@@ -310,7 +346,7 @@ func (h *Handler) GetInvite(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	// Must be a member to create an invitation
 	if !isMember(guild, userId) {
-		e := apperrors.NewBadRequest(apperrors.MustBeMemberInvite)
+		e := apperrors.NewAuthorization(apperrors.MustBeMemberInvite)
 
 		c.JSON(e.Status(), gin.H{
 			"error": e,
@@ -359,6 +395,9 @@ func (h *Handler) GetInvite(c *gin.Context) {
 // @Produce  json
 // @Param guildId path string true "Guild ID"
 // @Success 200 {object} model.Success
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/invite [delete]
 func (h *Handler) DeleteGuildInvites(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -376,8 +415,9 @@ func (h *Handler) DeleteGuildInvites(c *gin.Context) {
 	}
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.InvalidateInvitesError,
+		e := apperrors.NewAuthorization(apperrors.InvalidateInvitesError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -386,8 +426,8 @@ func (h *Handler) DeleteGuildInvites(c *gin.Context) {
 	h.guildService.InvalidateInvites(ctx, guild)
 	guild.InviteLinks = make(pq.StringArray, 0)
 
-	if err := h.guildService.UpdateGuild(guild); err != nil {
-		log.Printf("Failed to join guild: %v\n", err.Error())
+	if err = h.guildService.UpdateGuild(guild); err != nil {
+		log.Printf("Failed to delete guild invites: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -398,8 +438,18 @@ func (h *Handler) DeleteGuildInvites(c *gin.Context) {
 }
 
 type joinReq struct {
-	Link string `json:"link" binding:"required"`
+	Link string `json:"link"`
 } //@name JoinRequest
+
+func (r joinReq) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Link, validation.Required),
+	)
+}
+
+func (r *joinReq) sanitize() {
+	r.Link = strings.TrimSpace(r.Link)
+}
 
 // JoinGuild adds the current user to invited guild
 // JoinGuild godoc
@@ -408,6 +458,8 @@ type joinReq struct {
 // @Produce  json
 // @Param request body joinReq true "Join Guild"
 // @Success 200 {object} model.GuildResponse
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/join [post]
 func (h *Handler) JoinGuild(c *gin.Context) {
 	var req joinReq
@@ -416,6 +468,8 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 	if ok := bindData(c, &req); !ok {
 		return
 	}
+
+	req.sanitize()
 
 	userId := c.MustGet("userId").(string)
 
@@ -450,8 +504,9 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 	guildId, err := h.guildService.GetGuildIdFromInvite(ctx, req.Link)
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"message": apperrors.InvalidInviteError,
+		e := apperrors.NewBadRequest(apperrors.InvalidInviteError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -459,8 +514,9 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 	guild, err := h.guildService.GetGuild(guildId)
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"message": apperrors.InvalidInviteError,
+		e := apperrors.NewBadRequest(apperrors.InvalidInviteError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -470,7 +526,7 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 		e := apperrors.NewBadRequest(apperrors.BannedFromServer)
 
 		c.JSON(e.Status(), gin.H{
-			"message": e,
+			"error": e,
 		})
 		return
 	}
@@ -480,14 +536,14 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 		e := apperrors.NewBadRequest(apperrors.AlreadyMember)
 
 		c.JSON(e.Status(), gin.H{
-			"message": e,
+			"error": e,
 		})
 		return
 	}
 
 	guild.Members = append(guild.Members, *authUser)
 
-	if err := h.guildService.UpdateGuild(guild); err != nil {
+	if err = h.guildService.UpdateGuild(guild); err != nil {
 		log.Printf("Failed to join guild: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
@@ -510,6 +566,9 @@ func (h *Handler) JoinGuild(c *gin.Context) {
 // @Produce  json
 // @Param guildId path string true "Guild ID"
 // @Success 200 {object} model.Success
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId} [delete]
 func (h *Handler) LeaveGuild(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -527,14 +586,14 @@ func (h *Handler) LeaveGuild(c *gin.Context) {
 	}
 
 	if guild.OwnerId == userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.OwnerCantLeave,
+		e := apperrors.NewAuthorization(apperrors.OwnerCantLeave)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
 
 	if err := h.guildService.RemoveMember(userId, guildId); err != nil {
-		log.Printf("Failed to leave guild: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -554,6 +613,9 @@ func (h *Handler) LeaveGuild(c *gin.Context) {
 // @Produce  json
 // @Param guildId path string true "Guild ID"
 // @Success 200 {object} model.Success
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /guilds/{guildId}/delete [delete]
 func (h *Handler) DeleteGuild(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -571,8 +633,9 @@ func (h *Handler) DeleteGuild(c *gin.Context) {
 	}
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.DeleteGuildError,
+		e := apperrors.NewAuthorization(apperrors.DeleteGuildError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}

@@ -18,6 +18,7 @@ import (
 // @Summary Get Current User's Friends
 // @Produce  json
 // @Success 200 {array} model.Friend
+// @Failure 404 {object} model.ErrorResponse
 // @Router /account/me/friends [get]
 func (h *Handler) GetUserFriends(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -43,6 +44,7 @@ func (h *Handler) GetUserFriends(c *gin.Context) {
 // @Summary Get Current User's Friend Requests
 // @Produce  json
 // @Success 200 {array} model.FriendRequest
+// @Failure 404 {object} model.ErrorResponse
 // @Router /account/me/pending [get]
 func (h *Handler) GetUserRequests(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -69,6 +71,8 @@ func (h *Handler) GetUserRequests(c *gin.Context) {
 // @Produce  json
 // @Param memberId path string true "User ID"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /account/{memberId}/friend [post]
 func (h *Handler) SendFriendRequest(c *gin.Context) {
 
@@ -76,8 +80,9 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 	memberId := c.Param("memberId")
 
 	if userId == memberId {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.AddYourselfError,
+		e := apperrors.NewBadRequest(apperrors.AddYourselfError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -126,7 +131,7 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 			Id:       authUser.ID,
 			Username: authUser.Username,
 			Image:    authUser.Image,
-			Type:     1,
+			Type:     model.Incoming,
 		})
 	}
 
@@ -141,14 +146,17 @@ func (h *Handler) SendFriendRequest(c *gin.Context) {
 // @Produce  json
 // @Param memberId path string true "User ID"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /account/{memberId}/friend [delete]
 func (h *Handler) RemoveFriend(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("memberId")
 
 	if userId == memberId {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.RemoveYourselfError,
+		e := apperrors.NewBadRequest(apperrors.RemoveYourselfError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -178,7 +186,7 @@ func (h *Handler) RemoveFriend(c *gin.Context) {
 	}
 
 	if isFriend(authUser, member.ID) {
-		err := h.friendService.RemoveFriend(member.ID, authUser.ID)
+		err = h.friendService.RemoveFriend(member.ID, authUser.ID)
 
 		if err != nil {
 			log.Printf("Unable to remove user from friends: %v\n%v", memberId, err)
@@ -204,14 +212,17 @@ func (h *Handler) RemoveFriend(c *gin.Context) {
 // @Produce  json
 // @Param memberId path string true "User ID"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /account/{memberId}/friend/accept [post]
 func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("memberId")
 
 	if userId == memberId {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.AcceptYourselfError,
+		e := apperrors.NewBadRequest(apperrors.AcceptYourselfError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -296,14 +307,17 @@ func (h *Handler) AcceptFriendRequest(c *gin.Context) {
 // @Produce  json
 // @Param memberId path string true "User ID"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /account/{memberId}/friend/cancel [post]
 func (h *Handler) CancelFriendRequest(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("memberId")
 
 	if userId == memberId {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.CancelYourselfError,
+		e := apperrors.NewBadRequest(apperrors.CancelYourselfError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}

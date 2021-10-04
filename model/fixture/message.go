@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// GetMockMessage returns a mock message with the given uid as the owner and the cid as the ChannelId
 func GetMockMessage(uid, cid string) *model.Message {
 	text := RandStringRunes(100)
 
@@ -26,6 +27,7 @@ func GetMockMessage(uid, cid string) *model.Message {
 	}
 }
 
+// GetMockMessageResponse returns a mock message response with the given uid as the owner and the cid as the ChannelId
 func GetMockMessageResponse(uid, cid string) *model.MessageResponse {
 	message := GetMockMessage(uid, cid)
 	user := GetMockUser()

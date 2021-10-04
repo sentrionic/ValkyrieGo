@@ -35,9 +35,9 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// Client represents the websocket client at the server
+// Client represents the websockets client at the server
 type Client struct {
-	// The actual websocket connection.
+	// The actual websockets connection.
 	ID    string
 	conn  *websocket.Conn
 	hub   *Hub
@@ -73,9 +73,6 @@ func (client *Client) readPump() {
 	for {
 		_, jsonMessage, err := client.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("unexpected close error: %v", err)
-			}
 			break
 		}
 		client.handleNewMessage(jsonMessage)
@@ -105,7 +102,7 @@ func (client *Client) writePump() {
 			}
 			_, _ = w.Write(message)
 
-			// Attach queued chat messages to the current websocket message.
+			// Attach queued chat messages to the current websockets message.
 			n := len(client.send)
 			for i := 0; i < n; i++ {
 				_, _ = w.Write(newline)
@@ -133,7 +130,7 @@ func (client *Client) disconnect() {
 	_ = client.conn.Close()
 }
 
-// ServeWs handles websocket requests from clients requests.
+// ServeWs handles websockets requests from clients requests.
 func ServeWs(hub *Hub, ctx *gin.Context) {
 
 	userId := ctx.MustGet("userId").(string)

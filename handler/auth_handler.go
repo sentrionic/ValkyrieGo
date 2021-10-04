@@ -1,13 +1,15 @@
 package handler
 
 import (
-	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
 	"net/http"
+	"strings"
 )
 
 /*
@@ -16,12 +18,27 @@ import (
 
 type registerReq struct {
 	// Must be unique
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email"`
 	// Min 3, max 30 characters.
-	Username string `json:"username" binding:"required,gte=3,lte=30"`
+	Username string `json:"username"`
 	// Min 6, max 150 characters.
-	Password string `json:"password" binding:"required,gte=6,lte=150"`
+	Password string `json:"password"`
 } //@name RegisterRequest
+
+func (r registerReq) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Email, validation.Required, is.EmailFormat),
+		validation.Field(&r.Username, validation.Required, validation.Length(3, 30)),
+		validation.Field(&r.Password, validation.Required, validation.Length(6, 150)),
+	)
+}
+
+func (r *registerReq) sanitize() {
+	r.Username = strings.TrimSpace(r.Username)
+	r.Email = strings.TrimSpace(r.Email)
+	r.Email = strings.ToLower(r.Email)
+	r.Password = strings.TrimSpace(r.Password)
+}
 
 // Register handler creates a new user
 // Register godoc
@@ -31,6 +48,9 @@ type registerReq struct {
 // @Produce  json
 // @Param account body registerReq true "Create account"
 // @Success 201 {object} model.User
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /account/register [post]
 func (h *Handler) Register(c *gin.Context) {
 	var req registerReq
@@ -39,6 +59,8 @@ func (h *Handler) Register(c *gin.Context) {
 	if ok := bindData(c, &req); !ok {
 		return
 	}
+
+	req.sanitize()
 
 	initial := &model.User{
 		Email:    req.Email,
@@ -49,7 +71,10 @@ func (h *Handler) Register(c *gin.Context) {
 	user, err := h.userService.Register(initial)
 
 	if err != nil {
-		log.Printf("Failed to sign up user: %v\n", err.Error())
+		if err.Error() == apperrors.NewBadRequest(apperrors.DuplicateEmail).Error() {
+			toFieldErrorResponse(c, "Email", apperrors.DuplicateEmail)
+			return
+		}
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -63,10 +88,23 @@ func (h *Handler) Register(c *gin.Context) {
 
 type loginReq struct {
 	// Must be unique
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email"`
 	// Min 6, max 150 characters.
-	Password string `json:"password" binding:"required,gte=6,lte=30"`
+	Password string `json:"password"`
 } //@name LoginRequest
+
+func (r loginReq) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Email, validation.Required, is.EmailFormat),
+		validation.Field(&r.Password, validation.Required, validation.Length(6, 150)),
+	)
+}
+
+func (r *loginReq) sanitize() {
+	r.Email = strings.TrimSpace(r.Email)
+	r.Email = strings.ToLower(r.Email)
+	r.Password = strings.TrimSpace(r.Password)
+}
 
 // Login used to authenticate existent user
 // Login godoc
@@ -76,6 +114,9 @@ type loginReq struct {
 // @Produce  json
 // @Param account body loginReq true "Login account"
 // @Success 200 {object} model.User
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /account/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req loginReq
@@ -84,10 +125,11 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
+	req.sanitize()
+
 	user, err := h.userService.Login(req.Email, req.Password)
 
 	if err != nil {
-		log.Printf("Failed to sign in user: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -118,15 +160,26 @@ func (h *Handler) Logout(c *gin.Context) {
 	err := session.Save()
 
 	if err != nil {
-		fmt.Printf("error clearing session: %v", err)
+		log.Printf("error clearing session: %v\n", err.Error())
 	}
 
 	c.JSON(http.StatusOK, true)
 }
 
 type forgotRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email"`
 } //@name ForgotPasswordRequest
+
+func (r forgotRequest) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Email, validation.Required, is.EmailFormat),
+	)
+}
+
+func (r *forgotRequest) sanitize() {
+	r.Email = strings.TrimSpace(r.Email)
+	r.Email = strings.ToLower(r.Email)
+}
 
 // ForgotPassword sends a password reset email to the requested email
 // ForgotPassword godoc
@@ -136,6 +189,8 @@ type forgotRequest struct {
 // @Produce  json
 // @Param email body forgotRequest true "Forgot Password"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /account/forgot-password [post]
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req forgotRequest
@@ -143,18 +198,21 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
+	req.sanitize()
+
 	user, err := h.userService.GetByEmail(req.Email)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": apperrors.ServerError,
-		})
-		return
-	}
+		// No user with the email found
+		if err.Error() == apperrors.NewNotFound("email", req.Email).Error() {
+			c.JSON(http.StatusOK, true)
+			return
+		}
 
-	// No user with the email found
-	if user.ID == "" {
-		c.JSON(http.StatusOK, true)
+		e := apperrors.NewInternal()
+		c.JSON(e.Status(), gin.H{
+			"error": e,
+		})
 		return
 	}
 
@@ -162,8 +220,9 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 	err = h.userService.ForgotPassword(ctx, user)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": apperrors.ServerError,
+		e := apperrors.NewInternal()
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -172,15 +231,29 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 }
 
 type resetRequest struct {
-	// The from the email provided token.
-	Token string `json:"token" binding:"required"`
+	// The token the user got from the email.
+	Token string `json:"token"`
 	// Min 6, max 150 characters.
-	Password string `json:"newPassword" binding:"required,gte=6,lte=150"`
+	Password string `json:"newPassword"`
 	// Must be the same as the password value.
-	ConfirmPassword string `json:"confirmNewPassword" binding:"required,gte=6,lte=150"`
+	ConfirmPassword string `json:"confirmNewPassword"`
 } //@name ResetPasswordRequest
 
-// ResetPassword resets the users password with the provided token
+func (r resetRequest) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Token, validation.Required),
+		validation.Field(&r.Password, validation.Required, validation.Length(6, 150)),
+		validation.Field(&r.ConfirmPassword, validation.Required, validation.Length(6, 150)),
+	)
+}
+
+func (r *resetRequest) sanitize() {
+	r.Token = strings.TrimSpace(r.Token)
+	r.Password = strings.TrimSpace(r.Password)
+	r.ConfirmPassword = strings.TrimSpace(r.ConfirmPassword)
+}
+
+// ResetPassword resets the user's password with the provided token
 // ResetPassword godoc
 // @Tags Account
 // @Summary Reset Password
@@ -188,6 +261,8 @@ type resetRequest struct {
 // @Produce  json
 // @Param request body resetRequest true "Reset Password"
 // @Success 200 {object} model.User
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /account/reset-password [post]
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req resetRequest
@@ -196,11 +271,11 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 		return
 	}
 
+	req.sanitize()
+
 	// Check if passwords match
 	if req.Password != req.ConfirmPassword {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": apperrors.PasswordsDoNotMatch,
-		})
+		toFieldErrorResponse(c, "Password", apperrors.PasswordsDoNotMatch)
 		return
 	}
 
@@ -208,6 +283,10 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	user, err := h.userService.ResetPassword(ctx, req.Password, req.Token)
 
 	if err != nil {
+		if err.Error() == apperrors.NewBadRequest(apperrors.InvalidResetToken).Error() {
+			toFieldErrorResponse(c, "Token", apperrors.InvalidResetToken)
+			return
+		}
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -217,13 +296,4 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	setUserSession(c, user.ID)
 
 	c.JSON(http.StatusOK, user)
-}
-
-// setUserSession saves the users ID in the session
-func setUserSession(c *gin.Context, id string) {
-	session := sessions.Default(c)
-	session.Set("userId", id)
-	if err := session.Save(); err != nil {
-		fmt.Println(err)
-	}
 }

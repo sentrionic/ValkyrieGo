@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
@@ -697,12 +696,13 @@ func TestHandler_UpdateGuild(t *testing.T) {
 		assert.NoError(t, err)
 		request.Form = form
 
+		mockError := apperrors.NewAuthorization(apperrors.MustBeOwner)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.MustBeOwner,
+			"error": mockError,
 		})
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)
@@ -736,12 +736,13 @@ func TestHandler_UpdateGuild(t *testing.T) {
 		assert.NoError(t, err)
 		request.Form = form
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild", mockGuild.ID)
@@ -916,16 +917,14 @@ func TestHandler_GetInvite(t *testing.T) {
 		request, err := http.NewRequest(http.MethodGet, reqUrl, nil)
 		assert.NoError(t, err)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
+		respBody, _ := json.Marshal(gin.H{
+			"error": mockError,
+		})
 		router.ServeHTTP(rr, request)
 
-		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
-		})
-
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
-
-		mockGuildService.AssertExpectations(t)
 	})
 
 	t.Run("Not a member of the guild", func(t *testing.T) {
@@ -950,7 +949,7 @@ func TestHandler_GetInvite(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
-		mockError := apperrors.NewBadRequest(apperrors.MustBeMemberInvite)
+		mockError := apperrors.NewAuthorization(apperrors.MustBeMemberInvite)
 		respBody, err := json.Marshal(gin.H{
 			"error": mockError,
 		})
@@ -1185,16 +1184,14 @@ func TestHandler_DeleteGuildInvites(t *testing.T) {
 		request, err := http.NewRequest(http.MethodDelete, reqUrl, nil)
 		assert.NoError(t, err)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
+		respBody, _ := json.Marshal(gin.H{
+			"error": mockError,
+		})
 		router.ServeHTTP(rr, request)
 
-		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
-		})
-
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
-
-		mockGuildService.AssertExpectations(t)
 	})
 
 	t.Run("Error", func(t *testing.T) {
@@ -1261,12 +1258,13 @@ func TestHandler_DeleteGuildInvites(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidateInvitesError)
 		respBody, err := json.Marshal(gin.H{
-			"error": apperrors.InvalidateInvitesError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "InvalidateInvites")
@@ -1422,13 +1420,13 @@ func TestHandler_JoinGuild(t *testing.T) {
 		assert.NoError(t, err)
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
+		respBody, _ := json.Marshal(gin.H{
+			"error": mockError,
+		})
 		router.ServeHTTP(rr, request)
 
-		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
-		})
-
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetUser")
@@ -1582,7 +1580,7 @@ func TestHandler_JoinGuild(t *testing.T) {
 
 		mockError := apperrors.NewBadRequest(apperrors.BannedFromServer)
 		respBody, err := json.Marshal(gin.H{
-			"message": mockError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
@@ -1607,7 +1605,7 @@ func TestHandler_JoinGuild(t *testing.T) {
 			link,
 		}
 
-		mockError := apperrors.NewInternal()
+		mockError := apperrors.NewBadRequest(apperrors.InvalidInviteError)
 		mockGuildService.On("GetGuildIdFromInvite", mockArgs...).Return(mockGuild.ID, mockError)
 
 		mockSocketService := new(mocks.SocketService)
@@ -1634,11 +1632,11 @@ func TestHandler_JoinGuild(t *testing.T) {
 		router.ServeHTTP(rr, request)
 
 		respBody, err := json.Marshal(gin.H{
-			"message": apperrors.InvalidInviteError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusNotFound, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertExpectations(t)
@@ -1689,7 +1687,7 @@ func TestHandler_JoinGuild(t *testing.T) {
 
 		mockError := apperrors.NewBadRequest(apperrors.AlreadyMember)
 		respBody, err := json.Marshal(gin.H{
-			"message": mockError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
@@ -1768,12 +1766,13 @@ func TestHandler_LeaveGuild(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.OwnerCantLeave)
 		respBody, err := json.Marshal(gin.H{
-			"error": apperrors.OwnerCantLeave,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertExpectations(t)
@@ -1804,12 +1803,13 @@ func TestHandler_LeaveGuild(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")
@@ -1966,12 +1966,13 @@ func TestHandler_DeleteGuild(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.DeleteGuildError)
 		respBody, err := json.Marshal(gin.H{
-			"error": apperrors.DeleteGuildError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)
@@ -2002,12 +2003,13 @@ func TestHandler_DeleteGuild(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")

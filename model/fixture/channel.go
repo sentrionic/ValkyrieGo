@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// GetMockChannel returns a mock channel. If guildId is not empty it will set GuildID to that id.
 func GetMockChannel(guildId string) *model.Channel {
 
 	var guild *string = nil
@@ -24,6 +25,8 @@ func GetMockChannel(guildId string) *model.Channel {
 		LastActivity: time.Now(),
 	}
 }
+
+// GetMockDMChannel returns a mock channel that has IsDM set to true and does not belong to a guild.
 func GetMockDMChannel() *model.Channel {
 	return &model.Channel{
 		BaseModel: model.BaseModel{

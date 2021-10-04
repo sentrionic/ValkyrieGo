@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 
 	// Register swagger docs
@@ -79,7 +81,7 @@ func NewHandler(c *Config) {
 	ag.POST("/reset-password", h.ResetPassword)
 
 	ag.Use(middleware.AuthUser())
-	ag.GET("", h.Me)
+	ag.GET("", h.GetCurrent)
 	ag.PUT("", h.Edit)
 	ag.PUT("/change-password", h.ChangePassword)
 
@@ -132,4 +134,24 @@ func NewHandler(c *Config) {
 	mg.POST("/:channelId", h.CreateMessage)
 	mg.PUT("/:messageId", h.EditMessage)
 	mg.DELETE("/:messageId", h.DeleteMessage)
+}
+
+// setUserSession saves the users ID in the session
+func setUserSession(c *gin.Context, id string) {
+	session := sessions.Default(c)
+	session.Set("userId", id)
+	if err := session.Save(); err != nil {
+		log.Printf("error setting the session: %v\n", err.Error())
+	}
+}
+
+func toFieldErrorResponse(c *gin.Context, field, message string) {
+	c.JSON(http.StatusBadRequest, gin.H{
+		"errors": []model.FieldError{
+			{
+				Field:   field,
+				Message: message,
+			},
+		},
+	})
 }

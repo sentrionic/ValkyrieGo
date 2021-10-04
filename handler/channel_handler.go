@@ -3,10 +3,12 @@ package handler
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
 	"net/http"
+	"strings"
 )
 
 /*
@@ -20,6 +22,8 @@ import (
 // @Produce  json
 // @Param guildId path string true "Guild ID"
 // @Success 200 {array} model.ChannelResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /channels/{guildId} [get]
 func (h *Handler) GuildChannels(c *gin.Context) {
 	guildId := c.Param("id")
@@ -66,12 +70,22 @@ func (h *Handler) GuildChannels(c *gin.Context) {
 // to create a public channel
 type channelReq struct {
 	// Channel Name. 3 to 30 character
-	Name string `json:"name" binding:"required,gte=3,lte=30"`
+	Name string `json:"name"`
 	// Default is true
 	IsPublic *bool `json:"isPublic"`
 	// Array of memberIds
-	Members []string `json:"members" binding:"omitempty"`
+	Members []string `json:"members"`
 } //@name ChannelRequest
+
+func (r channelReq) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Name, validation.Required, validation.Length(3, 30)),
+	)
+}
+
+func (r *channelReq) sanitize() {
+	r.Name = strings.TrimSpace(r.Name)
+}
 
 // CreateChannel creates a channel for the given guild param
 // CreateChannel godoc
@@ -81,6 +95,10 @@ type channelReq struct {
 // @Produce  json
 // @Param guildId path string true "Guild ID"
 // @Success 200 {array} model.ChannelResponse
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /channels/{guildId} [post]
 func (h *Handler) CreateChannel(c *gin.Context) {
 	var req channelReq
@@ -89,6 +107,8 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 	if ok := bindData(c, &req); !ok {
 		return
 	}
+
+	req.sanitize()
 
 	userId := c.MustGet("userId").(string)
 	guildId := c.Param("id")
@@ -105,8 +125,10 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 	}
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.MustBeOwner,
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
+
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -138,8 +160,9 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		members, err := h.guildService.FindUsersByIds(req.Members, guildId)
 
 		if err != nil {
-			c.JSON(apperrors.Status(err), gin.H{
-				"error": err,
+			e := apperrors.NewInternal()
+			c.JSON(e.Status(), gin.H{
+				"error": e,
 			})
 			return
 		}
@@ -151,7 +174,6 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 	channel, err := h.channelService.CreateChannel(&channelParams)
 
 	if err != nil {
-		log.Printf("Failed to create channel: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -160,10 +182,11 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 
 	guild.Channels = append(guild.Channels, *channel)
 
-	if err := h.guildService.UpdateGuild(guild); err != nil {
-		log.Printf("Failed to create channel: %v\n", err.Error())
-		c.JSON(apperrors.Status(err), gin.H{
-			"error": err,
+	if err = h.guildService.UpdateGuild(guild); err != nil {
+		log.Printf("Failed to update guild: %v\n", err.Error())
+		e := apperrors.NewInternal()
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -184,6 +207,8 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 // @Produce  json
 // @Param channelId path string true "Channel ID"
 // @Success 200 {array} string
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /channels/{channelId}/members [get]
 func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 	channelId := c.Param("id")
@@ -221,8 +246,9 @@ func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 	}
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.MustBeOwner,
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -255,6 +281,8 @@ func (h *Handler) PrivateChannelMembers(c *gin.Context) {
 // @Summary Get User's DMs
 // @Produce  json
 // @Success 200 {array} model.DirectMessage
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
 // @Router /channels/me/dm [get]
 func (h *Handler) DirectMessages(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -289,14 +317,18 @@ func (h *Handler) DirectMessages(c *gin.Context) {
 // @Produce  json
 // @Param channelId path string true "Member ID"
 // @Success 200 {object} model.DirectMessage
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /channels/{channelId}/dm [post]
 func (h *Handler) GetOrCreateDM(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	memberId := c.Param("id")
 
 	if userId == memberId {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apperrors.DMYourselfError,
+		e := apperrors.NewBadRequest(apperrors.DMYourselfError)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -390,6 +422,10 @@ func toDMChannel(member *model.User, channelId string, userId string) model.Dire
 // @Param channelId path string true "Channel ID"
 // @Param request body channelReq true "Edit Channel"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /channels/{channelId} [put]
 func (h *Handler) EditChannel(c *gin.Context) {
 	var req channelReq
@@ -398,6 +434,8 @@ func (h *Handler) EditChannel(c *gin.Context) {
 	if ok := bindData(c, &req); !ok {
 		return
 	}
+
+	req.sanitize()
 
 	userId := c.MustGet("userId").(string)
 	channelId := c.Param("id")
@@ -425,8 +463,9 @@ func (h *Handler) EditChannel(c *gin.Context) {
 	}
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.MustBeOwner,
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -467,7 +506,6 @@ func (h *Handler) EditChannel(c *gin.Context) {
 
 		err = h.channelService.AddPrivateChannelMembers(newMembers, channelId)
 		if err != nil {
-			log.Printf("Failed to add new members: %v\n", err.Error())
 			c.JSON(apperrors.Status(err), gin.H{
 				"error": err,
 			})
@@ -476,7 +514,6 @@ func (h *Handler) EditChannel(c *gin.Context) {
 
 		err = h.channelService.RemovePrivateChannelMembers(toRemove, channelId)
 		if err != nil {
-			log.Printf("Failed to add remove members: %v\n", err.Error())
 			c.JSON(apperrors.Status(err), gin.H{
 				"error": err,
 			})
@@ -484,8 +521,7 @@ func (h *Handler) EditChannel(c *gin.Context) {
 		}
 	}
 
-	if err := h.channelService.UpdateChannel(channel); err != nil {
-		log.Printf("Failed to update channel: %v\n", err.Error())
+	if err = h.channelService.UpdateChannel(channel); err != nil {
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -521,6 +557,10 @@ func difference(a, b []string) []string {
 // @Produce  json
 // @Param id path string true "Channel ID"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 404 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /channels/{id} [delete]
 func (h *Handler) DeleteChannel(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -549,8 +589,9 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 	}
 
 	if guild.OwnerId != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": apperrors.MustBeOwner,
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -565,8 +606,7 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 		return
 	}
 
-	if err := h.channelService.DeleteChannel(channel); err != nil {
-		log.Printf("Failed to delete channel: %v\n", err.Error())
+	if err = h.channelService.DeleteChannel(channel); err != nil {
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,
 		})
@@ -586,6 +626,7 @@ func (h *Handler) DeleteChannel(c *gin.Context) {
 // @Produce  json
 // @Param id path string true "DM Channel ID"
 // @Success 200 {object} model.Success
+// @Failure 404 {object} model.ErrorResponse
 // @Router /channels/{id}/dm [delete]
 func (h *Handler) CloseDM(c *gin.Context) {
 	userId := c.MustGet("userId").(string)

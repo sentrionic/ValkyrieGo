@@ -517,7 +517,7 @@ func TestHandler_ForgotPassword(t *testing.T) {
 		router.ServeHTTP(rr, request)
 
 		respBody, _ := json.Marshal(gin.H{
-			"message": apperrors.ServerError,
+			"error": mockError,
 		})
 
 		assert.Equal(t, mockError.Status(), rr.Code)
@@ -529,7 +529,9 @@ func TestHandler_ForgotPassword(t *testing.T) {
 		router := gin.Default()
 
 		mockUserService := new(mocks.UserService)
-		mockUserService.On("GetByEmail", mockUser.Email).Return(&model.User{}, nil)
+
+		mockError := apperrors.NewNotFound("email", mockUser.Email)
+		mockUserService.On("GetByEmail", mockUser.Email).Return(&model.User{}, mockError)
 
 		ForgotPasswordArgs := mock.Arguments{
 			mock.AnythingOfType("*context.emptyCtx"),

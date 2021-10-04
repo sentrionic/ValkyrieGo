@@ -7,6 +7,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/sentrionic/valkyrie/model"
+	"github.com/sentrionic/valkyrie/model/apperrors"
+	"log"
 	"time"
 )
 
@@ -32,12 +34,13 @@ func (r *redisRepository) SetResetToken(ctx context.Context, id string) (string,
 	uid, err := gonanoid.New()
 
 	if err != nil {
-		return "", err
+		log.Printf("Failed to generate id: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
-	if err := r.rds.Set(ctx, fmt.Sprintf("%s:%s", ForgotPasswordPrefix, uid), id, 24*time.Hour).Err(); err != nil {
-		fmt.Println(err)
-		return "", err
+	if err = r.rds.Set(ctx, fmt.Sprintf("%s:%s", ForgotPasswordPrefix, uid), id, 24*time.Hour).Err(); err != nil {
+		log.Printf("Failed to set link in redis: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
 	return uid, nil
@@ -48,9 +51,12 @@ func (r *redisRepository) GetIdFromToken(ctx context.Context, token string) (str
 	key := fmt.Sprintf("%s:%s", ForgotPasswordPrefix, token)
 	val, err := r.rds.Get(ctx, key).Result()
 
+	if err == redis.Nil {
+		return "", apperrors.NewBadRequest(apperrors.InvalidResetToken)
+	}
 	if err != nil {
-		fmt.Println(err)
-		return "", err
+		log.Printf("Failed to get value from redis: %v\n", err)
+		return "", apperrors.NewInternal()
 	}
 
 	r.rds.Del(ctx, key)
@@ -67,7 +73,8 @@ func (r *redisRepository) SaveInvite(ctx context.Context, guildId string, id str
 	value, err := json.Marshal(invite)
 
 	if err != nil {
-		return err
+		log.Printf("Error marshalling: %v\n", err.Error())
+		return apperrors.NewInternal()
 	}
 
 	expiration := 24 * time.Hour
@@ -75,8 +82,12 @@ func (r *redisRepository) SaveInvite(ctx context.Context, guildId string, id str
 		expiration = 0
 	}
 
-	result := r.rds.Set(ctx, fmt.Sprintf("%s:%s", InviteLinkPrefix, id), value, expiration)
-	return result.Err()
+	if result := r.rds.Set(ctx, fmt.Sprintf("%s:%s", InviteLinkPrefix, id), value, expiration); result.Err() != nil {
+		log.Printf("Failed to set invite link in redis: %v\n", err.Error())
+		return apperrors.NewInternal()
+	}
+
+	return nil
 }
 
 // GetInvite returns the stored guild Id for the given token.
@@ -85,16 +96,16 @@ func (r *redisRepository) GetInvite(ctx context.Context, token string) (string, 
 	val, err := r.rds.Get(ctx, key).Result()
 
 	if err != nil {
-		fmt.Println(err)
-		return "", err
+		log.Printf("Failed to get invite link from redis: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
 	var invite model.Invite
 	err = json.Unmarshal([]byte(val), &invite)
 
 	if err != nil {
-		fmt.Println(err)
-		return "", err
+		log.Printf("Error unmarshalling: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
 	if !invite.IsPermanent {

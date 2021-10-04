@@ -397,12 +397,13 @@ func TestHandler_AcceptFriendRequest(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewBadRequest(apperrors.AcceptYourselfError)
 		respBody, err := json.Marshal(gin.H{
-			"error": "You cannot accept yourself",
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockFriendService.AssertNotCalled(t, "GetMemberById")
@@ -419,7 +420,7 @@ func TestHandler_AcceptFriendRequest(t *testing.T) {
 		mockFriendService.On("GetMemberById", current.ID).Return(current, nil)
 		mockFriendService.On("GetMemberById", mockUser.ID).Return(mockUser, nil)
 
-		mockError := apperrors.NewBadRequest("Unable to accept the request")
+		mockError := apperrors.NewBadRequest(apperrors.UnableAcceptError)
 		mockFriendService.On("SaveRequests", mockUser).
 			Return(mockError)
 
@@ -670,12 +671,13 @@ func TestHandler_SendFriendRequest(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewBadRequest(apperrors.AddYourselfError)
 		respBody, err := json.Marshal(gin.H{
-			"error": "You cannot add yourself",
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockFriendService.AssertNotCalled(t, "GetMemberById")
@@ -690,7 +692,7 @@ func TestHandler_SendFriendRequest(t *testing.T) {
 		mockFriendService.On("GetMemberById", current.ID).Return(current, nil)
 		mockFriendService.On("GetMemberById", mockUser.ID).Return(mockUser, nil)
 
-		mockError := apperrors.NewBadRequest("Unable to add user as friend")
+		mockError := apperrors.NewBadRequest(apperrors.UnableAddError)
 		mockFriendService.On("SaveRequests", current).
 			Return(mockError)
 
@@ -898,12 +900,13 @@ func TestHandler_RemoveFriend(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewBadRequest(apperrors.RemoveYourselfError)
 		respBody, err := json.Marshal(gin.H{
-			"error": "You cannot remove yourself",
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockFriendService.AssertNotCalled(t, "GetMemberById")
@@ -919,7 +922,7 @@ func TestHandler_RemoveFriend(t *testing.T) {
 		mockFriendService.On("GetMemberById", current.ID).Return(current, nil)
 		mockFriendService.On("GetMemberById", mockUser.ID).Return(mockUser, nil)
 
-		mockError := apperrors.NewBadRequest("Unable to remove the user")
+		mockError := apperrors.NewBadRequest(apperrors.UnableRemoveError)
 		mockFriendService.On("RemoveFriend", mockUser.ID, current.ID).
 			Return(mockError)
 
@@ -1113,12 +1116,13 @@ func TestHandler_CancelFriendRequest(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewBadRequest(apperrors.CancelYourselfError)
 		respBody, err := json.Marshal(gin.H{
-			"error": "You cannot cancel yourself",
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockFriendService.AssertNotCalled(t, "GetMemberById")
@@ -1133,7 +1137,7 @@ func TestHandler_CancelFriendRequest(t *testing.T) {
 		mockFriendService.On("GetMemberById", current.ID).Return(current, nil)
 		mockFriendService.On("GetMemberById", mockUser.ID).Return(mockUser, nil)
 
-		mockError := apperrors.NewBadRequest("Unable to remove the user")
+		mockError := apperrors.NewBadRequest(apperrors.UnableRemoveError)
 		mockFriendService.On("DeleteRequest", mockUser.ID, current.ID).
 			Return(mockError)
 

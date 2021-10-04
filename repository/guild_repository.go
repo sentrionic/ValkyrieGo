@@ -131,48 +131,61 @@ func (r *guildRepository) FindByID(id string) (*model.Guild, error) {
 
 // Save updates the given guild
 func (r *guildRepository) Save(guild *model.Guild) error {
-	return r.DB.Save(&guild).Error
+	if result := r.DB.Save(&guild); result.Error != nil {
+		log.Printf("Could not update the guild with id: %v. Reason: %v\n", guild.ID, result.Error)
+		return apperrors.NewInternal()
+	}
+
+	return nil
 }
 
 // RemoveMember removes the given user from the given guild
 func (r *guildRepository) RemoveMember(userId string, guildId string) error {
-	err := r.DB.
-		Exec("DELETE FROM members WHERE user_id = ? AND guild_id = ?", userId, guildId).
-		Error
-	return err
+	if result := r.DB.
+		Exec("DELETE FROM members WHERE user_id = ? AND guild_id = ?", userId, guildId); result.Error != nil {
+		log.Printf("Could not remove member with id: %s from the guild with id: %v. Reason: %v\n", userId, guildId, result.Error)
+		return apperrors.NewInternal()
+	}
+
+	return nil
 }
 
 // Delete removes the given guild and all its associations
 func (r *guildRepository) Delete(guildId string) error {
-	err := r.DB.
+	if result := r.DB.
 		Exec("DELETE FROM members WHERE guild_id = ?", guildId).
 		Exec("DELETE FROM bans WHERE guild_id = ?", guildId).
-		Exec("DELETE FROM guilds WHERE id = ?", guildId).Error
-	return err
+		Exec("DELETE FROM guilds WHERE id = ?", guildId); result.Error != nil {
+		log.Printf("Could not delete the guild with id: %v. Reason: %v\n", guildId, result.Error)
+		return apperrors.NewInternal()
+	}
+
+	return nil
 }
 
 // UnbanMember removes the given user from the bans of the given guild
 func (r *guildRepository) UnbanMember(userId string, guildId string) error {
-	err := r.DB.
-		Exec("DELETE FROM bans WHERE guild_id = ? AND user_id = ?", guildId, userId).
-		Error
-	return err
+	if result := r.DB.Exec("DELETE FROM bans WHERE guild_id = ? AND user_id = ?", guildId, userId); result.Error != nil {
+		log.Printf("Could not unban the user with id: %v from the guild with id: %v. Reason: %v\n", userId, guildId, result.Error)
+		return apperrors.NewInternal()
+	}
+	return nil
 }
 
 // GetBanList returns a list of all banned users from the given guild
 func (r *guildRepository) GetBanList(guildId string) (*[]model.BanResponse, error) {
 	var bans []model.BanResponse
-	err := r.DB.
-		Raw(`
+	if result := r.DB.Raw(`
 			select u.id, u.username, u.image
 			from bans b
 			join users u on b."user_id" = u.id
 			where b."guild_id" = ?
-		`, guildId).
-		Scan(&bans).
-		Error
+		`, guildId).Scan(&bans); result.Error != nil {
+		log.Printf("Could not get the ban list for the guild with id: %v. Reason: %v\n", guildId, result.Error)
+		return &bans, apperrors.NewInternal()
+	}
 
-	return &bans, err
+	return &bans, nil
 }
 
 // GetMemberSettings returns the given members settings in the given guild

@@ -3,6 +3,7 @@ package middleware
 import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
+	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/service"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +23,7 @@ func TestAuthUser(t *testing.T) {
 
 		_, r := gin.CreateTestContext(rr)
 		store := cookie.NewStore([]byte("secret"))
-		r.Use(sessions.Sessions("vlk", store))
+		r.Use(sessions.Sessions(model.CookieName, store))
 
 		r.Use(func(c *gin.Context) {
 			session := sessions.Default(c)
@@ -49,7 +50,7 @@ func TestAuthUser(t *testing.T) {
 		// creates a test context and gin engine
 		_, r := gin.CreateTestContext(rr)
 		store := cookie.NewStore([]byte("secret"))
-		r.Use(sessions.Sessions("vlk", store))
+		r.Use(sessions.Sessions(model.CookieName, store))
 
 		r.GET("/api/accounts", AuthUser())
 

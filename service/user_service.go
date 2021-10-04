@@ -65,20 +65,20 @@ func (s *userService) Register(user *model.User) (*model.User, error) {
 		return nil, apperrors.NewInternal()
 	}
 
-	// Sanitize fields
-	user.Password = hashedPassword
-	user.Username = strings.TrimSpace(user.Username)
-	user.Email = strings.TrimSpace(user.Email)
-	user.Email = strings.ToLower(user.Email)
+	id, err := GenerateId()
 
-	id, _ := GenerateId()
+	if err != nil {
+		return nil, err
+	}
+
 	user.ID = id
 	user.Image = generateAvatar(user.Email)
+	user.Password = hashedPassword
 
 	return s.UserRepository.Create(user)
 }
 
-// Login reaches our to a UserRepository check if the user exists
+// Login reaches out to the UserRepository check if the user exists
 // and then compares the supplied password with the provided password
 // if a valid email/password combo is provided, u will hold all
 // available user fields
@@ -173,7 +173,7 @@ func (s *userService) ResetPassword(ctx context.Context, password string, token 
 
 	user.Password = hashedPassword
 
-	if err := s.UserRepository.Update(user); err != nil {
+	if err = s.UserRepository.Update(user); err != nil {
 		return nil, err
 	}
 
@@ -188,7 +188,7 @@ func (s *userService) GetRequestCount(userId string) (*int64, error) {
 	return s.UserRepository.GetRequestCount(userId)
 }
 
-// generateAvatar returns an gravatar using the md5 hash of the email
+// generateAvatar returns a gravatar using the md5 hash of the email
 func generateAvatar(email string) string {
 	hash := md5.Sum([]byte(email))
 	return fmt.Sprintf("https://gravatar.com/avatar/%s?d=identicon", hex.EncodeToString(hash[:]))

@@ -1,5 +1,12 @@
 package model
 
+type RequestType int
+
+const (
+	Outgoing RequestType = iota
+	Incoming
+)
+
 //FriendRequest contains all info to display request.
 //Type stands for the type of the request.
 //1: Incoming,
@@ -9,5 +16,5 @@ type FriendRequest struct {
 	Username string `json:"username"`
 	Image    string `json:"image"`
 	// 1: Incoming, 0: Outgoing
-	Type int `json:"type" enums:"0,1"`
+	Type RequestType `json:"type" enums:"0,1"`
 } //@name FriendRequest

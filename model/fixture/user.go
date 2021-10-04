@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// GetMockUser returns a mock user
 func GetMockUser() *model.User {
 	email := Email()
 	return &model.User{

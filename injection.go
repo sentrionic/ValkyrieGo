@@ -8,6 +8,7 @@ import (
 	cors "github.com/rs/cors/wrapper/gin"
 	"github.com/sentrionic/valkyrie/handler"
 	"github.com/sentrionic/valkyrie/handler/middleware"
+	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/repository"
 	"github.com/sentrionic/valkyrie/service"
 	"github.com/sentrionic/valkyrie/ws"
@@ -104,7 +105,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	router.Use(sessions.Sessions("vlk", store))
+	router.Use(sessions.Sessions(model.CookieName, store))
 
 	// set time out
 	handlerTimeout := os.Getenv("HANDLER_TIMEOUT")
@@ -131,7 +132,7 @@ func inject(d *dataSources) (*gin.Engine, error) {
 	rateLimiter := mgin.NewMiddleware(limiter.New(limitStore, rate))
 	router.Use(rateLimiter)
 
-	// Websocket Setup
+	// Websockets Setup
 	hub := ws.NewWebsocketHub(&ws.Config{
 		UserService:    userService,
 		GuildService:   guildService,

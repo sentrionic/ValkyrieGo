@@ -415,7 +415,7 @@ func TestMain_FriendsE2E(t *testing.T) {
 				assert.Equal(t, authUser.Username, request.Username)
 				assert.Equal(t, authUser.ID, request.Id)
 				assert.Equal(t, authUser.Image, request.Image)
-				assert.Equal(t, 1, request.Type)
+				assert.Equal(t, model.Incoming, request.Type)
 			},
 		},
 		{
@@ -565,7 +565,7 @@ func TestMain_FriendsE2E(t *testing.T) {
 				assert.Equal(t, mockUser.Username, request.Username)
 				assert.Equal(t, mockUser.ID, request.Id)
 				assert.Equal(t, mockUser.Image, request.Image)
-				assert.Equal(t, 0, request.Type)
+				assert.Equal(t, model.Outgoing, request.Type)
 			},
 		},
 		{

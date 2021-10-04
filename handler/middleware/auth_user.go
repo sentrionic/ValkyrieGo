@@ -1,11 +1,10 @@
 package middleware
 
 import (
-	"errors"
-	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/model/apperrors"
+	"log"
 )
 
 // AuthUser checks if the request contains a valid session
@@ -16,9 +15,9 @@ func AuthUser() gin.HandlerFunc {
 		id := session.Get("userId")
 
 		if id == nil {
-			err := errors.New(apperrors.InvalidSession)
-			c.JSON(401, gin.H{
-				"error": err,
+			e := apperrors.NewAuthorization(apperrors.InvalidSession)
+			c.JSON(e.Status(), gin.H{
+				"error": e,
 			})
 			c.Abort()
 			return
@@ -31,7 +30,7 @@ func AuthUser() gin.HandlerFunc {
 		// Recreate session to extend its lifetime
 		session.Set("userId", id)
 		if err := session.Save(); err != nil {
-			fmt.Println(err)
+			log.Printf("Failed recreate the session: %v\n", err.Error())
 		}
 
 		c.Next()

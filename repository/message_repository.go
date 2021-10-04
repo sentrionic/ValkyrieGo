@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/sentrionic/valkyrie/model"
 	"github.com/sentrionic/valkyrie/model/apperrors"
@@ -156,17 +157,32 @@ func (r *messageRepository) CreateMessage(message *model.Message) (*model.Messag
 
 // UpdateMessage updates the message in the DB
 func (r *messageRepository) UpdateMessage(message *model.Message) error {
-	return r.DB.Save(&message).Error
+	if result := r.DB.Save(&message); result.Error != nil {
+		log.Printf("Could not update message with id: %v. Reason: %v\n", message.ID, result.Error)
+		return apperrors.NewInternal()
+	}
+	return nil
 }
 
 // DeleteMessage removes the message from the DB
 func (r *messageRepository) DeleteMessage(message *model.Message) error {
-	return r.DB.Delete(message).Error
+	if result := r.DB.Delete(message); result.Error != nil {
+		log.Printf("Could not delete message with id: %v. Reason: %v\n", message.ID, result.Error)
+		return apperrors.NewInternal()
+	}
+	return nil
 }
 
 // GetById fetches the message for the given id
 func (r *messageRepository) GetById(messageId string) (*model.Message, error) {
-	var message model.Message
-	err := r.DB.Where("id = ?", messageId).First(&message).Error
-	return &message, err
+	message := &model.Message{}
+
+	if result := r.DB.Where("id = ?", messageId).First(message); result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return message, apperrors.NewNotFound("message", messageId)
+		}
+		return message, apperrors.NewInternal()
+	}
+
+	return message, nil
 }

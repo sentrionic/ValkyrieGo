@@ -9,9 +9,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/disintegration/imaging"
 	"github.com/sentrionic/valkyrie/model"
+	"github.com/sentrionic/valkyrie/model/apperrors"
 	"github.com/sentrionic/valkyrie/service"
 	"image"
 	"image/jpeg"
+	"log"
+
 	// Register accepted file type jpeg
 	_ "image/jpeg"
 	// Register accepted file type png
@@ -46,13 +49,15 @@ func (s *s3FileRepository) UploadAvatar(header *multipart.FileHeader, directory 
 	file, err := header.Open()
 
 	if err != nil {
-		return "", err
+		log.Printf("Failed to open header: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
 	src, _, err := image.Decode(file)
 
 	if err != nil {
-		return "", err
+		log.Printf("Failed to decode image: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
 	img := imaging.Resize(src, 150, 0, imaging.Lanczos)
@@ -61,7 +66,8 @@ func (s *s3FileRepository) UploadAvatar(header *multipart.FileHeader, directory 
 	err = jpeg.Encode(buf, img, &jpeg.Options{Quality: 75})
 
 	if err != nil {
-		return "", err
+		log.Printf("Failed to encode image: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
 	up, err := uploader.Upload(&s3manager.UploadInput{
@@ -72,11 +78,13 @@ func (s *s3FileRepository) UploadAvatar(header *multipart.FileHeader, directory 
 	})
 
 	if err != nil {
-		return "", err
+		log.Printf("Failed to upload file: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
-	if err := file.Close(); err != nil {
-		return "", err
+	if err = file.Close(); err != nil {
+		log.Printf("Failed to close file: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
 	return up.Location, nil
@@ -92,7 +100,8 @@ func (s *s3FileRepository) UploadFile(header *multipart.FileHeader, directory, f
 	file, err := header.Open()
 
 	if err != nil {
-		return "", err
+		log.Printf("Failed to open header: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
 	up, err := uploader.Upload(&s3manager.UploadInput{
@@ -103,11 +112,13 @@ func (s *s3FileRepository) UploadFile(header *multipart.FileHeader, directory, f
 	})
 
 	if err != nil {
-		return "", err
+		log.Printf("Failed to upload file: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
-	if err := file.Close(); err != nil {
-		return "", err
+	if err = file.Close(); err != nil {
+		log.Printf("Failed to close file: %v\n", err.Error())
+		return "", apperrors.NewInternal()
 	}
 
 	return up.Location, nil
@@ -121,5 +132,10 @@ func (s *s3FileRepository) DeleteImage(key string) error {
 		Key:    aws.String(key),
 	})
 
-	return err
+	if err != nil {
+		log.Printf("Failed to delete image: %v\n", err.Error())
+		return apperrors.NewInternal()
+	}
+
+	return nil
 }

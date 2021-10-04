@@ -16,6 +16,7 @@ func init() {
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var numberRunes = []rune("1234567890")
 
+// RandStringRunes returns a random latin string of the given length
 func RandStringRunes(n int) string {
 	b := make([]rune, n)
 	for i := range b {
@@ -43,23 +44,28 @@ func randStringLowerRunes(n int) string {
 	return string(b)
 }
 
+// RandInt returns a random int within the given range
 func RandInt(min, max int) int {
 	return rand.Intn(max-min+1) + min
 }
 
+// RandID returns a 15 character long numeric string
 func RandID() string {
 	return randNumberRunes(15)
 }
 
+// Username returns a random string that's 4 to 15 characters long
 func Username() string {
 	return RandStringRunes(RandInt(4, 15))
 }
 
+// Email returns a random email ending with @example.com
 func Email() string {
 	email := fmt.Sprintf("%s@example.com", randStringLowerRunes(RandInt(5, 10)))
 	return strings.ToLower(email)
 }
 
+// RandStr returns a random string that has the given length
 func RandStr(n int) string {
 	return RandStringRunes(n)
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// GetMockGuild returns a mock guild with the given uid as the owner.
 func GetMockGuild(uid string) *model.Guild {
 	ownerId := RandID()
 	if uid != "" {

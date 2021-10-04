@@ -4,7 +4,6 @@ import (
 	"context"
 	gonanoid "github.com/matoous/go-nanoid"
 	"github.com/sentrionic/valkyrie/model"
-	"strings"
 )
 
 // GuildService acts as a struct for injecting an implementation of GuildRepository
@@ -55,8 +54,6 @@ func (g *guildService) CreateGuild(guild *model.Guild) (*model.Guild, error) {
 	}
 
 	guild.ID = id
-	guild.Name = strings.TrimSpace(guild.Name)
-	guild.Icon = nil
 
 	return g.GuildRepository.Create(guild)
 }

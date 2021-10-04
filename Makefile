@@ -34,5 +34,8 @@ build:
 fmt:
 	go fmt github.com/sentrionic/...
 
+swag:
+	swag init
+
 workflow:
 	make fmt && make lint && make test

@@ -43,8 +43,7 @@ func (r *userRepository) Create(user *model.User) (*model.User, error) {
 	if result := r.DB.Create(&user); result.Error != nil {
 		// check unique constraint
 		if isDuplicateKeyError(result.Error) {
-			log.Printf("Could not create a user with email: %v. Reason: %v\n", user.Email, result.Error)
-			return nil, apperrors.NewConflict("email", user.Email)
+			return nil, apperrors.NewBadRequest(apperrors.DuplicateEmail)
 		}
 
 		log.Printf("Could not create a user with email: %v. Reason: %v\n", user.Email, result.Error)
@@ -71,8 +70,7 @@ func (r *userRepository) FindByEmail(email string) (*model.User, error) {
 
 // Update updates the user in the DB
 func (r *userRepository) Update(user *model.User) error {
-	result := r.DB.Save(&user)
-	return result.Error
+	return r.DB.Save(&user).Error
 }
 
 // GetFriendAndGuildIds returns the id of the users friends and the guilds they are part of

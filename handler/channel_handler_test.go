@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
@@ -157,14 +156,15 @@ func TestHandler_GuildChannels(t *testing.T) {
 		request, err := http.NewRequest(http.MethodGet, url, nil)
 		assert.NoError(t, err)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")
@@ -405,12 +405,13 @@ func TestHandler_CreateChannel(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.MustBeOwner)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.MustBeOwner,
+			"error": mockError,
 		})
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)
@@ -450,14 +451,15 @@ func TestHandler_CreateChannel(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")
@@ -800,14 +802,14 @@ func TestHandler_PrivateChannelMembers(t *testing.T) {
 		request, err := http.NewRequest(http.MethodGet, url, nil)
 		assert.NoError(t, err)
 
-		router.ServeHTTP(rr, request)
-
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
 		respBody, err := json.Marshal(gin.H{
-			"error": apperrors.MustBeOwner,
+			"error": e,
 		})
 		assert.NoError(t, err)
+		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, e.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockChannelService.AssertCalled(t, "Get", mockChannel.ID)
@@ -839,12 +841,13 @@ func TestHandler_PrivateChannelMembers(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockChannelService.AssertNotCalled(t, "Get")
@@ -949,14 +952,15 @@ func TestHandler_DirectMessages(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockChannelService.AssertNotCalled(t, "GetDirectMessages")
@@ -1149,12 +1153,13 @@ func TestHandler_GetOrCreateDM(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		e := apperrors.NewBadRequest(apperrors.DMYourselfError)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.DMYourselfError,
+			"error": e,
 		})
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, e.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockFriendService.AssertNotCalled(t, "GetMemberById")
@@ -1183,14 +1188,15 @@ func TestHandler_GetOrCreateDM(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockFriendService.AssertNotCalled(t, "GetMemberById")
@@ -1441,12 +1447,13 @@ func TestHandler_EditChannel(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.MustBeOwner,
+			"error": e,
 		})
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, e.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)
@@ -1457,12 +1464,10 @@ func TestHandler_EditChannel(t *testing.T) {
 
 	t.Run("Unauthorized", func(t *testing.T) {
 		id := fixture.RandID()
-		mockError := apperrors.NewNotFound("channel", id)
 
 		mockGuildService := new(mocks.GuildService)
 
 		mockChannelService := new(mocks.ChannelService)
-		mockChannelService.On("Get", id).Return(nil, mockError)
 
 		mockSocketService := new(mocks.SocketService)
 
@@ -1489,14 +1494,15 @@ func TestHandler_EditChannel(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockChannelService.AssertNotCalled(t, "Get")
@@ -1905,12 +1911,13 @@ func TestHandler_DeleteChannel(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		e := apperrors.NewAuthorization(apperrors.MustBeOwner)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.MustBeOwner,
+			"error": e,
 		})
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, e.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockChannelService.AssertCalled(t, "Get", mockChannel.ID)
@@ -1990,14 +1997,15 @@ func TestHandler_DeleteChannel(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockChannelService.AssertNotCalled(t, "Get")
@@ -2162,14 +2170,15 @@ func TestHandler_CloseDM(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockChannelService.AssertNotCalled(t, "GetDMByUserAndChannel")

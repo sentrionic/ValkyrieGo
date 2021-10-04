@@ -1,13 +1,15 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/sentrionic/valkyrie/model/apperrors"
 	"log"
 	"mime/multipart"
 	"net/http"
+	"strings"
 )
 
 /*
@@ -15,15 +17,16 @@ import (
  * that the authenticated user can do
  */
 
-// Me handler calls services for getting
+// GetCurrent handler calls services for getting
 // a user's details
-// Me godoc
+// GetCurrent godoc
 // @Tags Account
 // @Summary Get Current User
 // @Produce  json
 // @Success 200 {object} model.User
+// @Failure 404 {object} model.ErrorResponse
 // @Router /account [get]
-func (h *Handler) Me(c *gin.Context) {
+func (h *Handler) GetCurrent(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
 	user, err := h.userService.Get(userId)
 
@@ -42,12 +45,25 @@ func (h *Handler) Me(c *gin.Context) {
 
 type editReq struct {
 	// Min 3, max 30 characters.
-	Username string `form:"username" binding:"required,min=3,max=30"`
+	Username string `form:"username"`
 	// Must be unique
-	Email string `form:"email" binding:"required,email"`
+	Email string `form:"email"`
 	// image/png or image/jpeg
-	Image *multipart.FileHeader `form:"image" binding:"omitempty" swaggertype:"string" format:"binary"`
+	Image *multipart.FileHeader `form:"image" swaggertype:"string" format:"binary"`
 } //@name EditUser
+
+func (r editReq) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Email, validation.Required, is.EmailFormat),
+		validation.Field(&r.Username, validation.Required, validation.Length(3, 30)),
+	)
+}
+
+func (r *editReq) sanitize() {
+	r.Username = strings.TrimSpace(r.Username)
+	r.Email = strings.TrimSpace(r.Email)
+	r.Email = strings.ToLower(r.Email)
+}
 
 // Edit handler edits the users account details
 // Edit godoc
@@ -57,6 +73,9 @@ type editReq struct {
 // @Produce  json
 // @Param account body editReq true "Update Account"
 // @Success 200 {object} model.User
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /account [put]
 func (h *Handler) Edit(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -69,14 +88,15 @@ func (h *Handler) Edit(c *gin.Context) {
 		return
 	}
 
+	req.sanitize()
+
 	authUser, err := h.userService.Get(userId)
 
 	if err != nil {
-		err := errors.New(apperrors.InvalidSession)
-		c.JSON(401, gin.H{
-			"error": err,
+		e := apperrors.NewAuthorization(apperrors.InvalidSession)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
-		c.Abort()
 		return
 	}
 
@@ -87,10 +107,7 @@ func (h *Handler) Edit(c *gin.Context) {
 		inUse := h.userService.IsEmailAlreadyInUse(req.Email)
 
 		if inUse {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"field":   "Email",
-				"message": apperrors.DuplicateEmail,
-			})
+			toFieldErrorResponse(c, "Email", apperrors.DuplicateEmail)
 			return
 		}
 		authUser.Email = req.Email
@@ -102,10 +119,7 @@ func (h *Handler) Edit(c *gin.Context) {
 		mimeType := req.Image.Header.Get("Content-Type")
 
 		if valid := isAllowedImageType(mimeType); !valid {
-			e := apperrors.NewBadRequest(apperrors.InvalidImageType)
-			c.JSON(e.Status(), gin.H{
-				"error": e,
-			})
+			toFieldErrorResponse(c, "Image", apperrors.InvalidImageType)
 			return
 		}
 
@@ -113,8 +127,9 @@ func (h *Handler) Edit(c *gin.Context) {
 		url, err := h.userService.ChangeAvatar(req.Image, directory)
 
 		if err != nil {
-			c.JSON(500, gin.H{
-				"error": err,
+			e := apperrors.NewInternal()
+			c.JSON(e.Status(), gin.H{
+				"error": e,
 			})
 			return
 		}
@@ -127,10 +142,9 @@ func (h *Handler) Edit(c *gin.Context) {
 	err = h.userService.UpdateAccount(authUser)
 
 	if err != nil {
-		log.Printf("Failed to update user: %v\n", err.Error())
-
-		c.JSON(apperrors.Status(err), gin.H{
-			"error": err,
+		e := apperrors.NewInternal()
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}
@@ -139,14 +153,28 @@ func (h *Handler) Edit(c *gin.Context) {
 }
 
 type changeRequest struct {
-	CurrentPassword string `json:"currentPassword" binding:"required"`
+	CurrentPassword string `json:"currentPassword"`
 	// Min 6, max 150 characters.
-	NewPassword string `json:"newPassword" binding:"required,gte=6,lte=150"`
+	NewPassword string `json:"newPassword"`
 	// Must be the same as the newPassword value.
-	ConfirmNewPassword string `json:"confirmNewPassword" binding:"required,gte=6,lte=150"`
+	ConfirmNewPassword string `json:"confirmNewPassword"`
 } //@name ChangePasswordRequest
 
-// ChangePassword handler changes the users password
+func (r changeRequest) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.CurrentPassword, validation.Required, validation.Length(6, 150)),
+		validation.Field(&r.NewPassword, validation.Required, validation.Length(6, 150)),
+		validation.Field(&r.ConfirmNewPassword, validation.Required, validation.Length(6, 150)),
+	)
+}
+
+func (r *changeRequest) sanitize() {
+	r.CurrentPassword = strings.TrimSpace(r.CurrentPassword)
+	r.NewPassword = strings.TrimSpace(r.NewPassword)
+	r.ConfirmNewPassword = strings.TrimSpace(r.ConfirmNewPassword)
+}
+
+// ChangePassword handler changes the user's password
 // ChangePassword godoc
 // @Tags Account
 // @Summary Change Current User's Password
@@ -154,6 +182,9 @@ type changeRequest struct {
 // @Produce  json
 // @Param request body changeRequest true "Change Password"
 // @Success 200 {object} model.Success
+// @Failure 400 {object} model.ErrorsResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
 // @Router /account/change-password [put]
 func (h *Handler) ChangePassword(c *gin.Context) {
 	userId := c.MustGet("userId").(string)
@@ -164,32 +195,30 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
+	req.sanitize()
+
 	// Check if passwords are equal
 	if req.NewPassword != req.ConfirmNewPassword {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"field":   "password",
-			"message": apperrors.PasswordsDoNotMatch,
-		})
+		toFieldErrorResponse(c, "password", apperrors.PasswordsDoNotMatch)
 		return
 	}
 
 	authUser, err := h.userService.Get(userId)
 
 	if err != nil {
-		err := errors.New(apperrors.InvalidSession)
-		c.JSON(401, gin.H{
-			"error": err,
+		e := apperrors.NewAuthorization(apperrors.InvalidSession)
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
-		c.Abort()
 		return
 	}
 
 	err = h.userService.ChangePassword(req.CurrentPassword, req.NewPassword, authUser)
 
 	if err != nil {
-		log.Printf("Failed to change password: %v\n", err.Error())
-		c.JSON(apperrors.Status(err), gin.H{
-			"error": err,
+		e := apperrors.NewInternal()
+		c.JSON(e.Status(), gin.H{
+			"error": e,
 		})
 		return
 	}

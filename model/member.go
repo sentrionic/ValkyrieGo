@@ -36,6 +36,6 @@ type BanResponse struct {
 
 // MemberSettings is the API response of a member's guild settings.
 type MemberSettings struct {
-	Nickname *string `json:"nickname" binding:"omitempty,gte=3,lte=30"`
-	Color    *string `json:"color" binding:"omitempty,hexcolor"`
+	Nickname *string `json:"nickname"`
+	Color    *string `json:"color"`
 } //@name MemberSettings

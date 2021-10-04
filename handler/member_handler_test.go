@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
@@ -81,12 +80,13 @@ func TestHandler_GetMemberSettings(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")
@@ -169,11 +169,14 @@ func TestHandler_GetMemberSettings(t *testing.T) {
 
 func TestHandler_EditMemberSettings(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	authUser := fixture.GetMockUser()
 
-	req := &model.MemberSettings{
-		Nickname: nil,
-		Color:    nil,
+	authUser := fixture.GetMockUser()
+	nickname := fixture.Username()
+	color := "#fff"
+
+	settings := &model.MemberSettings{
+		Nickname: &nickname,
+		Color:    &color,
 	}
 
 	t.Run("Successfully edited settings", func(t *testing.T) {
@@ -184,7 +187,7 @@ func TestHandler_EditMemberSettings(t *testing.T) {
 		mockGuildService.On("GetGuild", mockGuild.ID).Return(mockGuild, nil)
 
 		mockArgs := mock.Arguments{
-			req,
+			settings,
 			authUser.ID,
 			mockGuild.ID,
 		}
@@ -199,8 +202,59 @@ func TestHandler_EditMemberSettings(t *testing.T) {
 			GuildService: mockGuildService,
 		})
 
+		reqBody, err := json.Marshal(gin.H{
+			"nickname": nickname,
+			"color":    color,
+		})
+		assert.NoError(t, err)
+
 		reqUrl := fmt.Sprintf("/api/guilds/%s/member", mockGuild.ID)
-		request, err := http.NewRequest(http.MethodPut, reqUrl, nil)
+		request, err := http.NewRequest(http.MethodPut, reqUrl, bytes.NewBuffer(reqBody))
+		assert.NoError(t, err)
+
+		request.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(rr, request)
+
+		respBody, err := json.Marshal(true)
+		assert.NoError(t, err)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, respBody, rr.Body.Bytes())
+
+		mockGuildService.AssertExpectations(t)
+	})
+
+	t.Run("Successfully reset member settings", func(t *testing.T) {
+		mockGuild := fixture.GetMockGuild("")
+		mockGuild.Members = append(mockGuild.Members, *authUser)
+
+		mockGuildService := new(mocks.GuildService)
+		mockGuildService.On("GetGuild", mockGuild.ID).Return(mockGuild, nil)
+
+		mockArgs := mock.Arguments{
+			&model.MemberSettings{},
+			authUser.ID,
+			mockGuild.ID,
+		}
+		mockGuildService.On("UpdateMemberSettings", mockArgs...).Return(nil)
+
+		rr := httptest.NewRecorder()
+
+		router := getAuthenticatedTestRouter(authUser.ID)
+
+		NewHandler(&Config{
+			R:            router,
+			GuildService: mockGuildService,
+		})
+
+		reqBody, err := json.Marshal(gin.H{
+			"nickname": nil,
+			"color":    nil,
+		})
+		assert.NoError(t, err)
+
+		reqUrl := fmt.Sprintf("/api/guilds/%s/member", mockGuild.ID)
+		request, err := http.NewRequest(http.MethodPut, reqUrl, bytes.NewBuffer(reqBody))
 		assert.NoError(t, err)
 
 		request.Header.Set("Content-Type", "application/json")
@@ -230,8 +284,14 @@ func TestHandler_EditMemberSettings(t *testing.T) {
 			GuildService: mockGuildService,
 		})
 
+		reqBody, err := json.Marshal(gin.H{
+			"nickname": nickname,
+			"color":    color,
+		})
+		assert.NoError(t, err)
+
 		reqUrl := fmt.Sprintf("/api/guilds/%s/member", mockGuild.ID)
-		request, err := http.NewRequest(http.MethodPut, reqUrl, nil)
+		request, err := http.NewRequest(http.MethodPut, reqUrl, bytes.NewBuffer(reqBody))
 		assert.NoError(t, err)
 
 		request.Header.Set("Content-Type", "application/json")
@@ -271,12 +331,13 @@ func TestHandler_EditMemberSettings(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")
@@ -301,8 +362,14 @@ func TestHandler_EditMemberSettings(t *testing.T) {
 			GuildService: mockGuildService,
 		})
 
+		reqBody, err := json.Marshal(gin.H{
+			"nickname": nickname,
+			"color":    color,
+		})
+		assert.NoError(t, err)
+
 		reqUrl := fmt.Sprintf("/api/guilds/%s/member", id)
-		request, err := http.NewRequest(http.MethodPut, reqUrl, nil)
+		request, err := http.NewRequest(http.MethodPut, reqUrl, bytes.NewBuffer(reqBody))
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
@@ -328,7 +395,7 @@ func TestHandler_EditMemberSettings(t *testing.T) {
 
 		mockError := apperrors.NewInternal()
 		mockArgs := mock.Arguments{
-			req,
+			settings,
 			authUser.ID,
 			mockGuild.ID,
 		}
@@ -344,8 +411,14 @@ func TestHandler_EditMemberSettings(t *testing.T) {
 			GuildService: mockGuildService,
 		})
 
+		reqBody, err := json.Marshal(gin.H{
+			"nickname": nickname,
+			"color":    color,
+		})
+		assert.NoError(t, err)
+
 		reqUrl := fmt.Sprintf("/api/guilds/%s/member", mockGuild.ID)
-		request, err := http.NewRequest(http.MethodPut, reqUrl, nil)
+		request, err := http.NewRequest(http.MethodPut, reqUrl, bytes.NewBuffer(reqBody))
 		assert.NoError(t, err)
 
 		request.Header.Set("Content-Type", "application/json")
@@ -490,12 +563,13 @@ func TestHandler_GetBanList(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.MustBeOwner)
 		respBody, err := json.Marshal(gin.H{
-			"error": apperrors.MustBeOwner,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 		mockGuildService.AssertExpectations(t)
 		mockGuildService.AssertNotCalled(t, "GetBanList")
@@ -521,12 +595,13 @@ func TestHandler_GetBanList(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")
@@ -654,12 +729,13 @@ func TestHandler_BanMember(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.MustBeOwner)
 		respBody, err := json.Marshal(gin.H{
-			"error": apperrors.MustBeOwner,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)
@@ -699,12 +775,13 @@ func TestHandler_BanMember(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")
@@ -932,12 +1009,13 @@ func TestHandler_BanMember(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewBadRequest(apperrors.BanYourselfError)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.BanYourselfError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)
@@ -1033,12 +1111,13 @@ func TestHandler_KickMember(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.MustBeOwner)
 		respBody, err := json.Marshal(gin.H{
-			"error": apperrors.MustBeOwner,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)
@@ -1077,12 +1156,13 @@ func TestHandler_KickMember(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")
@@ -1305,12 +1385,13 @@ func TestHandler_KickMember(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewBadRequest(apperrors.KickYourselfError)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.KickYourselfError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)
@@ -1396,12 +1477,13 @@ func TestHandler_UnbanMember(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.MustBeOwner)
 		respBody, err := json.Marshal(gin.H{
-			"error": apperrors.MustBeOwner,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)
@@ -1435,12 +1517,13 @@ func TestHandler_UnbanMember(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertNotCalled(t, "GetGuild")
@@ -1593,12 +1676,13 @@ func TestHandler_UnbanMember(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewBadRequest(apperrors.UnbanYourselfError)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.UnbanYourselfError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockGuildService.AssertCalled(t, "GetGuild", mockGuild.ID)

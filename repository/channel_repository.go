@@ -159,7 +159,11 @@ func (r *channelRepository) GetPrivateChannelMembers(channelId string) (*[]strin
 
 // AddDMChannelMembers inserts the given DM members in the DB
 func (r *channelRepository) AddDMChannelMembers(members []model.DMMember) error {
-	return r.DB.CreateInBatches(&members, len(members)).Error
+	if err := r.DB.CreateInBatches(&members, len(members)).Error; err != nil {
+		log.Printf("Could not add members to DM. Reason: %v\n", err)
+		return apperrors.NewInternal()
+	}
+	return nil
 }
 
 // SetDirectMessageStatus opens or closes the dm channel for the given
@@ -191,17 +195,29 @@ func (r *channelRepository) OpenDMForAll(dmId string) error {
 
 // DeleteChannel deletes the given channel from the DB
 func (r *channelRepository) DeleteChannel(channel *model.Channel) error {
-	return r.DB.Delete(&channel).Error
+	if result := r.DB.Delete(&channel); result.Error != nil {
+		log.Printf("Could not delete the channel with id: %v. Reason: %v\n", channel, result.Error)
+		return apperrors.NewInternal()
+	}
+	return nil
 }
 
 // UpdateChannel updates the given channel in the DB
 func (r *channelRepository) UpdateChannel(channel *model.Channel) error {
-	return r.DB.Save(&channel).Error
+	if result := r.DB.Save(&channel); result.Error != nil {
+		log.Printf("Could not update the given channel: %v. Reason: %v\n", channel.ID, result.Error)
+		return apperrors.NewInternal()
+	}
+	return nil
 }
 
 // CleanPCMembers removes all private channel members from the given channel
 func (r *channelRepository) CleanPCMembers(channelId string) error {
-	return r.DB.Exec("DELETE FROM pcmembers WHERE channel_id = ?", channelId).Error
+	if result := r.DB.Exec("DELETE FROM pcmembers WHERE channel_id = ?", channelId); result.Error != nil {
+		log.Printf("Could not clean members from the channel with id: %v. Reason: %v\n", channelId, result.Error)
+		return apperrors.NewInternal()
+	}
+	return nil
 }
 
 // AddPrivateChannelMembers inserts the given member as PCMembers in the given channel
@@ -210,14 +226,23 @@ func (r *channelRepository) AddPrivateChannelMembers(memberIds []string, channel
 	for _, id := range memberIds {
 		err = r.DB.Exec("INSERT INTO pcmembers VALUES (?, ?)", channelId, id).Error
 	}
-	return err
+
+	if err != nil {
+		log.Printf("Could not add members to private channel %s. Reason: %v\n", channelId, err)
+		return apperrors.NewInternal()
+	}
+	return nil
 }
 
 // RemovePrivateChannelMembers removes the given ids from the PCMembers of the given channel
 func (r *channelRepository) RemovePrivateChannelMembers(memberIds []string, channelId string) error {
-	return r.DB.
-		Exec("DELETE FROM pcmembers WHERE channel_id = ? AND user_id IN ?", channelId, memberIds).
-		Error
+	if err := r.DB.Exec("DELETE FROM pcmembers WHERE channel_id = ? AND user_id IN ?", channelId, memberIds).
+		Error; err != nil {
+		log.Printf("Could not remove members from private channel %s. Reason: %v\n", channelId, err)
+		return apperrors.NewInternal()
+	}
+
+	return nil
 }
 
 // FindDMByUserAndChannelId returns the id of dm channel for the given channelId and userId

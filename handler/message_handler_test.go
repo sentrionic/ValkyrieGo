@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/sentrionic/valkyrie/mocks"
 	"github.com/sentrionic/valkyrie/model"
@@ -167,12 +166,13 @@ func TestHandler_GetMessages(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockChannelService.AssertNotCalled(t, "Get")
@@ -440,12 +440,13 @@ func TestHandler_CreateMessage(t *testing.T) {
 
 		router.ServeHTTP(rr, request)
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockChannelService.AssertNotCalled(t, "Get")
@@ -929,12 +930,13 @@ func TestHandler_UpdateMessage(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.EditMessageError)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.EditMessageError,
+			"error": mockError,
 		})
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockMessageService.AssertCalled(t, "Get", mockMessage.ID)
@@ -970,14 +972,15 @@ func TestHandler_UpdateMessage(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockMessageService.AssertNotCalled(t, "Get")
@@ -1325,14 +1328,15 @@ func TestHandler_Delete_Message(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.DeleteMessageError)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.DeleteMessageError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockMessageService.AssertCalled(t, "Get", mockMessage.ID)
@@ -1418,14 +1422,15 @@ func TestHandler_Delete_Message(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.DeleteDMMessageError)
 		respBody, _ := json.Marshal(gin.H{
-			"error": apperrors.DeleteDMMessageError,
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockMessageService.AssertCalled(t, "Get", mockMessage.ID)
@@ -1457,14 +1462,15 @@ func TestHandler_Delete_Message(t *testing.T) {
 
 		request.Header.Set("Content-Type", "application/json")
 
+		mockError := apperrors.NewAuthorization(apperrors.InvalidSession)
 		respBody, _ := json.Marshal(gin.H{
-			"error": errors.New(apperrors.InvalidSession),
+			"error": mockError,
 		})
 		assert.NoError(t, err)
 
 		router.ServeHTTP(rr, request)
 
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
+		assert.Equal(t, mockError.Status(), rr.Code)
 		assert.Equal(t, respBody, rr.Body.Bytes())
 
 		mockMessageService.AssertNotCalled(t, "Get")

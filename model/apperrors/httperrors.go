@@ -105,11 +105,11 @@ func NewConflict(name string, value string) *Error {
 func NewInternal() *Error {
 	return &Error{
 		Type:    Internal,
-		Message: "Internal server error.",
+		Message: ServerError,
 	}
 }
 
-// NewNotFound to create an error for 404
+// NewNotFound to create an error for 404 with a generic error message
 func NewNotFound(name string, value string) *Error {
 	return &Error{
 		Type:    NotFound,
