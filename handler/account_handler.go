@@ -216,9 +216,8 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	err = h.userService.ChangePassword(req.CurrentPassword, req.NewPassword, authUser)
 
 	if err != nil {
-		e := apperrors.NewInternal()
-		c.JSON(e.Status(), gin.H{
-			"error": e,
+		c.JSON(apperrors.Status(err), gin.H{
+			"error": err,
 		})
 		return
 	}
