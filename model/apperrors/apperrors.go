@@ -24,6 +24,7 @@ const (
 
 // Account Errors
 const (
+	InvalidOldPassword  = "Invalid old password"
 	InvalidCredentials  = "Invalid email and password combination"
 	DuplicateEmail      = "An account with that email already exists"
 	PasswordsDoNotMatch = "Passwords do not match"

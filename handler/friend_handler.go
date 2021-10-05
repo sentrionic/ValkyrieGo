@@ -347,7 +347,7 @@ func (h *Handler) CancelFriendRequest(c *gin.Context) {
 	}
 
 	// Check if the member is in the current user's requests
-	if containsRequest(authUser, member) {
+	if containsRequest(authUser, member) || containsRequest(member, authUser) {
 		err := h.friendService.DeleteRequest(member.ID, authUser.ID)
 
 		if err != nil {

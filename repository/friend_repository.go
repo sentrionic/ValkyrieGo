@@ -74,7 +74,12 @@ func (r *friendRepository) FindByID(id string) (*model.User, error) {
 
 // DeleteRequest removes the given member and user from the friend requests
 func (r *friendRepository) DeleteRequest(memberId string, userId string) error {
-	return r.DB.Exec("DELETE FROM friend_requests WHERE receiver_id = ? AND sender_id = ?", memberId, userId).Error
+	return r.DB.Exec(`
+		DELETE
+		FROM friend_requests
+		WHERE receiver_id = @memberId AND sender_id = @userId
+		   OR receiver_id = @userId AND sender_id = @memberId
+`, sql.Named("memberId", memberId), sql.Named("userId", userId)).Error
 }
 
 // RemoveFriend removes members from the friends table.

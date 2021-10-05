@@ -1,7 +1,9 @@
 package model
 
+// RequestType stands for the type of friend request
 type RequestType int
 
+// FriendRequest RequestType enum
 const (
 	Outgoing RequestType = iota
 	Incoming

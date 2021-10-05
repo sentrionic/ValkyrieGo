@@ -178,10 +178,12 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 		}
 
 		// Prevent file upload on the live server.
-		// Remove and uncomment if you do want upload
+		// Remove the if part if you do want upload
 		var attachment *model.Attachment
 		if gin.Mode() == gin.ReleaseMode {
 			id, _ := gonanoid.Nanoid(20)
+
+			// Random image to test files in the app
 			attachment = &model.Attachment{
 				ID:       id,
 				Url:      fmt.Sprintf("https://picsum.photos/seed/%s/600", id),
@@ -199,14 +201,6 @@ func (h *Handler) CreateMessage(c *gin.Context) {
 			}
 		}
 
-		//attachment, err := h.messageService.UploadFile(req.File, channel.ID)
-		//if err != nil {
-		//	fmt.Println(err)
-		//	c.JSON(http.StatusInternalServerError, gin.H{
-		//		"error": err,
-		//	})
-		//	return
-		//}
 		params.Attachment = attachment
 	}
 
@@ -308,7 +302,7 @@ func (h *Handler) EditMessage(c *gin.Context) {
 
 	message.Text = req.Text
 
-	if err := h.messageService.UpdateMessage(message); err != nil {
+	if err = h.messageService.UpdateMessage(message); err != nil {
 		log.Printf("Failed to edit message: %v\n", err.Error())
 		c.JSON(apperrors.Status(err), gin.H{
 			"error": err,

@@ -83,6 +83,21 @@ func (s *socketService) EmitNewChannel(room string, channel *model.ChannelRespon
 	s.Hub.BroadcastToRoom(data, room)
 }
 
+func (s *socketService) EmitNewPrivateChannel(members []string, channel *model.ChannelResponse) {
+	data, err := json.Marshal(model.WebsocketMessage{
+		Action: ws.AddPrivateChannelAction,
+		Data:   channel,
+	})
+
+	if err != nil {
+		log.Printf("error marshalling response: %v\n", err)
+	}
+
+	for _, id := range members {
+		s.Hub.BroadcastToRoom(data, id)
+	}
+}
+
 func (s *socketService) EmitEditChannel(room string, channel *model.ChannelResponse) {
 	data, err := json.Marshal(model.WebsocketMessage{
 		Action: ws.EditChannelAction,
@@ -344,7 +359,7 @@ func (s *socketService) EmitAddFriend(user, member *model.User) {
 func (s *socketService) EmitRemoveFriend(userId, memberId string) {
 	data, err := json.Marshal(model.WebsocketMessage{
 		Action: ws.RemoveFriendAction,
-		Data:   userId,
+		Data:   memberId,
 	})
 
 	if err != nil {

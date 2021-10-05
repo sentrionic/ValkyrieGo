@@ -20,6 +20,7 @@ const (
 	EditMessageAction       = "edit_message"
 	DeleteMessageAction     = "delete_message"
 	AddChannelAction        = "add_channel"
+	AddPrivateChannelAction = "add_private_channel"
 	EditChannelAction       = "edit_channel"
 	DeleteChannelAction     = "delete_channel"
 	EditGuildAction         = "edit_guild"

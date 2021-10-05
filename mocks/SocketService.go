@@ -77,6 +77,11 @@ func (_m *SocketService) EmitNewNotification(guildId string, channelId string) {
 	_m.Called(guildId, channelId)
 }
 
+// EmitNewPrivateChannel provides a mock function with given fields: members, channel
+func (_m *SocketService) EmitNewPrivateChannel(members []string, channel *model.ChannelResponse) {
+	_m.Called(members, channel)
+}
+
 // EmitRemoveFriend provides a mock function with given fields: userId, memberId
 func (_m *SocketService) EmitRemoveFriend(userId string, memberId string) {
 	_m.Called(userId, memberId)

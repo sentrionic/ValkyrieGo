@@ -28,7 +28,7 @@ func (message *WebsocketMessage) Encode() []byte {
 	return encoding
 }
 
-// SocketService defines methods related emitting websocket events the service layer expects
+// SocketService defines methods related emitting websockets events the service layer expects
 // any repository it interacts with to implement
 type SocketService interface {
 	EmitNewMessage(room string, message *MessageResponse)
@@ -36,6 +36,7 @@ type SocketService interface {
 	EmitDeleteMessage(room, messageId string)
 
 	EmitNewChannel(room string, channel *ChannelResponse)
+	EmitNewPrivateChannel(members []string, channel *ChannelResponse)
 	EmitEditChannel(room string, channel *ChannelResponse)
 	EmitDeleteChannel(channel *Channel)
 

@@ -516,7 +516,7 @@ func TestUserService_ChangePassword(t *testing.T) {
 		err = us.ChangePassword(currentPassword, newPassword, mockUser)
 		assert.Error(t, err)
 
-		assert.Equal(t, err, apperrors.NewAuthorization(apperrors.InvalidCredentials))
+		assert.Equal(t, err, apperrors.NewAuthorization(apperrors.InvalidOldPassword))
 
 		mockUserRepository.AssertNotCalled(t, "Update")
 	})

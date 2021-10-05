@@ -194,7 +194,12 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 	response := channel.SerializeChannel()
 
 	// Emit the new channel to the guild members
-	h.socketService.EmitNewChannel(guildId, &response)
+	if channel.IsPublic {
+		h.socketService.EmitNewChannel(guildId, &response)
+		// Emit to private channel members
+	} else {
+		h.socketService.EmitNewPrivateChannel(req.Members, &response)
+	}
 
 	c.JSON(http.StatusCreated, response)
 }

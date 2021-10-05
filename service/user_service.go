@@ -91,10 +91,14 @@ func (s *userService) Login(email, password string) (*model.User, error) {
 	}
 
 	// verify
-	err = verifyPassword(password, user.Password)
+	match, err := comparePasswords(user.Password, password)
 
 	if err != nil {
-		return nil, err
+		return nil, apperrors.NewInternal()
+	}
+
+	if !match {
+		return nil, apperrors.NewAuthorization(apperrors.InvalidCredentials)
 	}
 
 	return user, nil
@@ -123,10 +127,15 @@ func (s *userService) DeleteImage(key string) error {
 }
 
 func (s *userService) ChangePassword(currentPassword, newPassword string, user *model.User) error {
-	err := verifyPassword(currentPassword, user.Password)
+	// verify
+	match, err := comparePasswords(user.Password, currentPassword)
 
 	if err != nil {
-		return err
+		return apperrors.NewInternal()
+	}
+
+	if !match {
+		return apperrors.NewAuthorization(apperrors.InvalidOldPassword)
 	}
 
 	hashedPassword, err := hashPassword(newPassword)
@@ -192,19 +201,4 @@ func (s *userService) GetRequestCount(userId string) (*int64, error) {
 func generateAvatar(email string) string {
 	hash := md5.Sum([]byte(email))
 	return fmt.Sprintf("https://gravatar.com/avatar/%s?d=identicon", hex.EncodeToString(hash[:]))
-}
-
-// verifyPassword checks if the given password and the user's stored password match and throws an error if they don't
-func verifyPassword(password, hashedPassword string) error {
-	match, err := comparePasswords(hashedPassword, password)
-
-	if err != nil {
-		return apperrors.NewInternal()
-	}
-
-	if !match {
-		return apperrors.NewAuthorization(apperrors.InvalidCredentials)
-	}
-
-	return nil
 }
