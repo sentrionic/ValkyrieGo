@@ -1,5 +1,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/sentrionic/ValkyrieGo)](https://goreportcard.com/report/github.com/sentrionic/ValkyrieGo)
 
+This repository got merged into the main repository and only exists to view the commit history prior to the merge.
+
+For the newest and most up to date version go to [Valkyrie](https://github.com/sentrionic/Valkyrie).
+
 # ValkyrieGO
 
 <p align="center">
